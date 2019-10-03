@@ -1,0 +1,14 @@
+{
+  "name": "@raggesilver/reqparams",
+  "version": "1.0.0",
+  "description": "Middleware to validate required parameters (POST/GET)",
+  "main": "index.js",
+  "repository": "git@gitlab.com:raggesilver/reqparams.git",
+  "author": "Paulo Queiroz <pvaqueiroz@gmail.com>",
+  "license": "GPL-3.0-only",
+  "private": false,
+  "bugs": {
+    "url": "https://gitlab.com/raggesilver/reqparams/issues"
+  },
+  "homepage": "https://gitlab.com/raggesilver/reqparams#README"
+}
