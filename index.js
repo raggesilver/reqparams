@@ -9,16 +9,20 @@ module.exports = {
       for (const k in params) {
         // If not present in body and not optional
         if (!(k in req.body) && !params[k].optional)
-          return res.status(400).end(params[k].msg || `Param '${k}' missing.`);
+          return res.status(400).json({
+            error: params[k].msg || `Param '${k}' missing.`
+          });
 
         // If validate function was specified
         if (typeof params[k].validate === 'function') {
           let _valid = await params[k].validate(req.body[k]);
           if (_valid !== true) {
             if (typeof _valid === 'string')
-              return res.status(400).end(_valid);
+              return res.status(400).json({ error: _valid });
             return (
-              res.status(400).end(params[k].msg || `Invalid param '${k}'.`));
+              res.status(400).json({
+                error: params[k].msg || `Invalid param '${k}'.`
+              }));
           }
         }
       }
@@ -35,16 +39,20 @@ module.exports = {
       for (const k in params) {
         // If not present in query and not optional
         if (!(k in req.query) && !params[k].optional)
-          return res.status(400).end(params[k].msg || `Param '${k}' missing.`);
+          return res.status(400).json({
+            error: params[k].msg || `Param '${k}' missing.`
+          });
 
         // If validate function was specified
         if (typeof params[k].validate === 'function') {
           let _valid = await params[k].validate(req.query[k]);
           if (_valid !== true) {
             if (typeof _valid === 'string')
-              return res.status(400).end(_valid);
+              return res.status(400).json({ error: _valid });
             return (
-              res.status(400).end(params[k].msg || `Invalid param '${k}'.`));
+              res.status(400).json({
+                error: params[k].msg || `Invalid param '${k}'.`
+              }));
           }
         }
       }
