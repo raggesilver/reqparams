@@ -7,11 +7,17 @@ module.exports = {
     return async (req, res, next) => {
       // Foreach key in params
       for (const k in params) {
-        // If not present in body and not optional
-        if (!(k in req.body) && !params[k].optional)
-          return res.status(400).json({
-            error: params[k].msg || `Param '${k}' missing.`
-          });
+        // If not present in body
+        if (!(k in req.body)) {
+          // If not optional
+          if (!params[k].optional)
+            return res.status(400).json({
+              error: params[k].msg || `Param '${k}' missing.`
+            });
+          // If it is optional skip it
+          else
+            continue ;
+        }
 
         // If validate function was specified
         if (typeof params[k].validate === 'function') {
@@ -38,10 +44,16 @@ module.exports = {
       // Foreach key in params
       for (const k in params) {
         // If not present in query and not optional
-        if (!(k in req.query) && !params[k].optional)
-          return res.status(400).json({
-            error: params[k].msg || `Param '${k}' missing.`
-          });
+        if (!(k in req.query)) {
+          // If not optional
+          if (!params[k].optional)
+            return res.status(400).json({
+              error: params[k].msg || `Param '${k}' missing.`
+            });
+          // If it is optional skip it
+          else
+            continue ;
+        }
 
         // If validate function was specified
         if (typeof params[k].validate === 'function') {
