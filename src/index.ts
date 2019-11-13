@@ -21,16 +21,26 @@
 
 import express = require('express');
 
+export interface Params {
+  [key: string]: {
+    'validate': Function;
+    'required': boolean;
+    'type': Function;
+    'msg': string;
+    'either': string|number|symbol;
+  };
+};
+
 class ReqParam {
   source: any;
   // Reference so other functions can use it
-  params: any;
+  params: Params = {};
 
   extractSource(req: express.Request): Object {
     return this.source = req['body'];
   }
 
-  exec(params: any): Function {
+  exec(params: Params): Function {
     return async (req: express.Request, res: express.Response,
       next: express.NextFunction) => {
 
@@ -134,11 +144,11 @@ class ReqQuery extends ReqParam {
   }
 }
 
-export const reqparams = (params: Object): Function => {
+export const reqparams = (params: Params): Function => {
   return new ReqParam().exec(params);
 };
 
-export const reqquery = (params: Object): Function => {
+export const reqquery = (params: Params): Function => {
   return new ReqQuery().exec(params);
 };
 
