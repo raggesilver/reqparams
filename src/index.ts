@@ -1,5 +1,5 @@
 /*
- * lib.ts
+ * index.ts
  *
  * Copyright 2019 Paulo Queiroz <pvaqueiroz@gmail.com>
  *
