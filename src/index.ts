@@ -77,6 +77,22 @@ class ReqParam {
           }
         }
 
+        // If type was specified
+        if ('type' in params[key]) {
+          if (typeof params[key].type !== 'function')
+            throw new TypeError(
+              'Key type must be of type Function (e.g. Number, Array, ...)'
+            );
+
+          if (Object.prototype.toString.call(this.source[key]) !==
+              Object.prototype.toString.call(params[key].type())) {
+            // Value has wrong type
+            return res.status(400).json({
+              error: params[key].msg || `Invalid type for param '${key}'.`
+            });
+          }
+        }
+
         // If no valid validate function for param, continue
         if (typeof params[key].validate !== 'function')
           continue ;
