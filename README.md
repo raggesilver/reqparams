@@ -1,10 +1,12 @@
 # reqparams
 
-Simple middleware to check required fields in express http requests.
+Simple middleware to check and validate required fields in ExpressJs http
+requests.
 
 **Summary**:
 - [Example](#example)
-- [Docs <- not really](#"docs")
+- [Docs](#docs)
+- [Shipped validate functions](#shipped-validate-functions)
 - [FAQ](#faq)
 
 ## Example
@@ -77,23 +79,37 @@ app.post('/register', reqparams(registerFields), (req, res) => {
 });
 ```
 
-## "Docs"
+## Docs
 
-### validate
+### Keys
+
+Keys in the object passed to `reqparams` or `reqquery` must be present in the
+request body (unless `required: false` is specified). But apart from being
+present it is also possible to validate the values passed in. For that the key
+values must be an object and may contain the following:
+
+#### validate
 
 Validate functions are the core of `reqparams`, they allow you to test whether a
 field is valid outside your route, which can make your code way cleaner.
 
-- Validate functions **can** be `async`.
-- If they return anything but boolean `true` they will fail
+- Validate functions **may** be `async`.
+- If they return anything but `true` the request will fail (400)
 - If they return a string, they will fail and use the string as the error
 message
 
-### either
+As of `2.1.0` validate may be a single function on an array of functions. These
+functions should be prototyped:
 
-Either was introduced in v3, it allows you to say that only one of many fields
-are required, still if the validate function for any of them fail the request
-will be refused.
+```typescript
+(val: any): Boolean|String|Promise<Boolean|String>
+```
+
+#### either
+
+Either was introduced in `2.0.0`, it allows you to say that only one of many
+fields are required, still if the validate function for any of them fail the
+request will be refused.
 
 If your login function needs a password and either username or email you could
 use reqparams like this:
@@ -116,9 +132,43 @@ If neither `username` nor `email` are present the request will be refused with:
 }
 ```
 
-### all the rest
+#### all the rest
 
-All the other keys supported are easy to understand from the [Example](#example).
+All the other keys supported are easy to understand from the
+[Example](#example).
+
+---
+
+## Shipped validate functions
+
+This package also has it's own validate functions.
+
+### `notEmpty`
+
+`notEmpty` takes either a string or an array and checks if:
+
+- The string is not (empty or all whitespace)
+- The array has at least one element
+
+Any other type will fail (`return false`).
+
+### `unique`
+
+`unique` is a validate function **helper**. It can be used to easily check if
+a field is unique to a specific `mongoose Model`.
+
+**Example**
+
+```javascript
+  // ...
+  email: {
+    validate: async (val) => await unique(val, 'email', UserModel),
+  }
+```
+
+This will run a `model.findOne({ [key]: val })`, and return `true` if none is
+found. The call is made inside a `try/catch` block and returns `false` if any
+error is thrown.
 
 ## FAQ
 
