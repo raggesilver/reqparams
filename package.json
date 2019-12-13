@@ -24,5 +24,8 @@
     "@types/mongoose": "^5.5.34",
     "@types/node": "^12.12.7",
     "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "@raggesilver/hidash": "^2.0.2"
   }
 }

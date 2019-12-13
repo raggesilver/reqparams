@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"@raggesilver/hidash@^2.0.2":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@raggesilver/hidash/-/hidash-2.0.2.tgz#8ada5cfff4695078ea052015b9559b1dd5ecf207"
+  integrity sha512-JC4FLlJ0O4lqRI22Dj37XuX4NFkeoOnfOzBJkR730p6gSX3E8HdSqDlrqf0ogcTSxPfIFBbbAJJxcB+vi67kOQ==
+
 "@types/body-parser@*":
   version "1.17.1"
   resolved "https://registry.yarnpkg.com/@types/body-parser/-/body-parser-1.17.1.tgz#18fcf61768fb5c30ccc508c21d6fd2e8b3bf7897"

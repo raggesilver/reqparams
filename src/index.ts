@@ -21,6 +21,7 @@
 
 import express = require('express');
 import mongoose = require('mongoose');
+import _ = require('@raggesilver/hidash');
 
 export interface Params {
   [key: string]: {
@@ -62,7 +63,7 @@ class ReqParam {
         }
 
         // Check if key is present
-        if (!(key in this.source)) {
+        if (!_.exists(this.source, key)) {
           // Handle key not present
           if (params[key].required === false)
             continue ;
@@ -80,7 +81,7 @@ class ReqParam {
           else if (params[key].either) {
             continue ;
           }
-          else if (!params[key].either) {
+          else {
             // Required param not present
             return res.status(400).json({
               error: params[key].msg || `Param ${key} missing`
@@ -89,13 +90,14 @@ class ReqParam {
         }
 
         // If type was specified
+        const val: any = _.get(this.source, key);
         if ('type' in params[key]) {
           if (typeof params[key].type !== 'function')
             throw new TypeError(
               'Key type must be of type Function (e.g. Number, Array, ...)'
             );
 
-          if (Object.prototype.toString.call(this.source[key]) !==
+          if (Object.prototype.toString.call(val) !==
               Object.prototype.toString.call(params[key].type())) {
             // Value has wrong type
             return res.status(400).json({
@@ -114,7 +116,7 @@ class ReqParam {
         }
 
         // Run all at once
-        let valids: any = await Promise.all(fns.map(v => v(this.source[key])));
+        let valids: any = await Promise.all(fns.map(v => v(val)));
         // Check all the results, if any failed return
         for (const valid of valids) {
           if (valid !== true) {
@@ -131,7 +133,7 @@ class ReqParam {
         // there is we already know it's valid
         let present = false;
         either[key].forEach((paramName: string) => {
-          if (paramName in this.source)
+          if (_.exists(this.source, paramName))
             present = true;
         });
         // If no param is present
