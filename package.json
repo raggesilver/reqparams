@@ -26,6 +26,7 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@raggesilver/hidash": "^2.0.2"
+    "@raggesilver/hidash": "^2.0.2",
+    "mongoose": "^5.8.1"
   }
 }

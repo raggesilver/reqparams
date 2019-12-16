@@ -179,6 +179,10 @@ export const notEmpty: ValidateFunction = (val) => {
   }
 };
 
+export const validId: ValidateFunction = (val) => {
+  return mongoose.Types.ObjectId.isValid(val);
+};
+
 export const unique = async (val: any, key: string, model: mongoose.Model<any>):
   Promise<Boolean|String> => {
   try {
