@@ -1,0 +1,2 @@
+jest.config.js linguist-vendored=true
+tests/*.js linguist-vendored=true
