@@ -83,10 +83,22 @@ app.post('/register', reqparams(registerFields), (req, res) => {
 
 ### Keys
 
+Keys are the path of the field that must be present in the request. Using keys
+you can easily validate root level and also nested fields. E.g.:
+
+```javascript
+{
+  // This will search for req.[body/query].email
+  'email': {},
+  // This will search for req.[body/query].name.first
+  'name.first': {},
+}
+```
+
 Keys in the object passed to `reqparams` or `reqquery` must be present in the
-request body (unless `required: false` is specified). But apart from being
-present it is also possible to validate the values passed in. For that the key
-values must be an object and may contain the following:
+request (unless `required: false` is specified). Apart from being present it is
+also possible to validate the values passed in. For that the key values must be
+an object and may contain the following:
 
 #### validate
 
@@ -169,6 +181,10 @@ a field is unique to a specific `mongoose Model`.
 This will run a `model.findOne({ [key]: val })`, and return `true` if none is
 found. The call is made inside a `try/catch` block and returns `false` if any
 error is thrown.
+
+### `validId`
+
+`validId` checks if a given value is a valid Mongoose ObjectId.
 
 ## FAQ
 
