@@ -1,6 +1,6 @@
 {
   "name": "@raggesilver/reqparams",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Middleware to validate required parameters (POST/GET)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
