@@ -1,3 +1,8 @@
-node_modules
-tests/
+node_modules/
+*test*
+!tests/
+!tests/**
+tests/coverage*
 dist/
+._*
+*DS*

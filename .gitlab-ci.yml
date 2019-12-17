@@ -1,0 +1,27 @@
+image: node:12
+
+stages:
+  - build
+  - deploy
+
+cache:
+  paths:
+    - node_modules/
+
+jest:
+  stage: build
+  script:
+    - yarn install
+    - yarn run test
+  artifacts:
+    paths:
+      - node_modules/
+
+deploy:
+  stage: deploy
+  script:
+    - yarn run build
+    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+    - npm publish --access public
+  only:
+    - tags
