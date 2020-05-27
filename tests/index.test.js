@@ -3,7 +3,7 @@
 const express     = require('express');
 const bodyParser  = require('body-parser');
 
-const { reqparams, validId, notEmpty } = require('../dist');
+const { reqparams, validId, notEmpty, reqall } = require('../dist');
 const app   = express();
 const port  = process.env.PORT || 9143;
 
@@ -27,6 +27,20 @@ app.post('/nest', postNest, (_req, res) => {
   res.json({});
 });
 
+let strictMid = reqall('body', {
+  'some.key': { type: String },
+}, {
+  strict: true,
+  onerror: (_req, res, _next, message) => {
+    return res.status(400).json({
+      error: message,
+      error_code: 'INVALID_INPUT',
+    });
+  },
+});
+
+app.post('/strict', strictMid, (req, res) => res.json(req.body));
+
 let handler = app.listen(port);
 
 // Setup tests
@@ -39,7 +53,7 @@ test('POST /a { username: notEmpty } FAIL', async () => {
   }
   catch (e) {
     expect(e.response.status).toBe(400);
-    expect(e.response.data).toMatchObject({ error: 'Param username missing' });
+    expect(e.response.data).toMatchObject({ error: 'Parameter username missing' });
   }
 });
 
@@ -61,7 +75,7 @@ test('POST /nest { username: notEmpty } FAIL', async () => {
   catch (e) {
     expect(e.response.status).toBe(400);
     expect(e.response.data).toMatchObject({
-      error: 'Param name.last missing',
+      error: 'Parameter name.last missing',
     });
   }
 });
@@ -74,6 +88,44 @@ test('POST /nest { username: notEmpty } OK', async () => {
     },
   });
   expect(data).toMatchObject({});
+});
+
+test('POST /sctrict { some.key: String } OK', async () => {
+  let { data } = await axios.post(`http://127.0.0.1:${port}/strict`, {
+    some: {
+      key: 'some value',
+      removeMe: true,
+    },
+    remove: {
+      me: 'please',
+    },
+  });
+
+  expect(data.remove).toBe(undefined);
+  expect(data.some).not.toBe(undefined);
+  expect(data.some.removeMe).toBe(undefined);
+  expect(data.some.key).toBe('some value');
+});
+
+test('POST /sctrict { some.key: String } FAIL', async () => {
+  let data = undefined;
+  let error = undefined;
+
+  try {
+    let { data: d } = await axios.post(`http://127.0.0.1:${port}/strict`, {
+      some: {
+        key: 13,
+      },
+    });
+    data = d;
+  }
+  catch (e) {
+    error = e;
+  }
+
+  expect(data).toBe(undefined);
+  expect(error).not.toBe(undefined);
+  expect(error.response.data.error_code).toBe('INVALID_INPUT');
 });
 
 // Close listener after testing

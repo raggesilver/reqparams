@@ -33,10 +33,23 @@ export interface Params {
   };
 };
 
+export interface ParamOptions {
+  'strict': boolean;
+  'onerror': Function;
+};
+
+const defaultOnerror = (_req: express.Request, res: express.Response, _next: express.NextFunction, message: string) => {
+  return res.status(400).json({
+    error: message,
+  });
+};
+
 class ReqParam {
   source: any;
+  sourcePath: any;
   // Reference so other functions can use it
   params: Params = {};
+  options: ParamOptions = <ParamOptions> {};
 
   extractSource(req: express.Request): Object {
     return this.source = req['body'];
@@ -83,9 +96,7 @@ class ReqParam {
           }
           else {
             // Required param not present
-            return res.status(400).json({
-              error: params[key].msg || `Param ${key} missing`
-            });
+            return (this.options.onerror || defaultOnerror)(req, res, next, params[key].msg || `Parameter ${key} missing`);
           }
         }
 
@@ -100,9 +111,7 @@ class ReqParam {
           if (Object.prototype.toString.call(val) !==
               Object.prototype.toString.call(params[key].type())) {
             // Value has wrong type
-            return res.status(400).json({
-              error: params[key].msg || `Invalid type for param '${key}'.`
-            });
+            return (this.options.onerror || defaultOnerror)(req, res, next, params[key].msg || `Invalid type for param '${key}'`);
           }
         }
 
@@ -121,8 +130,8 @@ class ReqParam {
         for (const valid of valids) {
           if (valid !== true) {
             let msg = (typeof valid === 'string') ?
-              valid : (params[key].msg || `Invalid param ${key}`);
-            return res.status(400).json({ error: msg });
+              valid : (params[key].msg || `Invalid parameter ${key}`);
+            return (this.options.onerror || defaultOnerror)(req, res, next, msg);
           }
         }
       }
@@ -138,10 +147,20 @@ class ReqParam {
         });
         // If no param is present
         if (!present) {
-          return res.status(400).json({
-            error: `At least one of ${either[key].join(', ')} must be present`
-          });
+          return (this.options.onerror || defaultOnerror)(req, res, next, `At least one of ${either[key].join(', ')} must be present`);
         }
+      }
+
+      if (this.options.strict) {
+        let obj = {};
+
+        for (const key in params) {
+          if (_.exists(this.source, key)) {
+            _.set(obj, key, _.get(this.source, key));
+          }
+        }
+
+        (req as any)[this.sourcePath] = obj;
       }
 
       next();
@@ -149,18 +168,35 @@ class ReqParam {
   }
 };
 
-class ReqQuery extends ReqParam {
+class ReqAll extends ReqParam {
+  src: string;
+
+  constructor(src: string, options: ParamOptions|null) {
+    super();
+
+    this.sourcePath = src;
+    this.src = src;
+    this.options = options || <ParamOptions> {};
+  }
+
   extractSource(req: express.Request): Object {
-    return this.source = req['query'];
+    if (!(this.src in req)) {
+      throw new Error(`${this.source} key does not exist in express request`);
+    }
+    return this.source = (req as any)[this.src];
   }
 }
 
-export const reqparams = (params: Params): Function => {
-  return new ReqParam().exec(params);
+export const reqparams = (params: Params, options: ParamOptions|null): Function => {
+  return new ReqAll('body', options).exec(params);
 };
 
-export const reqquery = (params: Params): Function => {
-  return new ReqQuery().exec(params);
+export const reqquery = (params: Params, options: ParamOptions|null): Function => {
+  return new ReqAll('query', options).exec(params);
+};
+
+export const reqall = (source: string, params: Params, options: ParamOptions|null) => {
+  return new ReqAll(source, options).exec(params);
 };
 
 export interface ValidateFunction {

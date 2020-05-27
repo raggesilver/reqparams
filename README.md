@@ -79,6 +79,8 @@ app.post('/register', reqparams(registerFields), (req, res) => {
 });
 ```
 
+If you still want more examples check out [tests/index.test.js](https://gitlab.com/raggesilver-npm/reqparams/tree/master/tests/index.test.js).
+
 ## Docs
 
 ### Keys
@@ -148,6 +150,64 @@ If neither `username` nor `email` are present the request will be refused with:
 
 All the other keys supported are easy to understand from the
 [Example](#example).
+
+### Options
+
+> Since 3.0.0
+
+When calling any of the validators (reqparams, reqquery, ...) you may also pass
+a second object. That object will contain options on how the validator behaves.
+
+These are the available options: `strict` and `onerror`.
+
+#### `strict`: boolean
+
+The strict parameter will make you request object have only the keys you
+specified in [keys](#keys). Reqparams achieves this by creating a new object
+and only setting the values of keys that exist in [keys](#keys).
+
+#### `onerror`: Function
+
+The onerror function will be called (if present) instead of the default error
+handler. This function receives the express request, express response, express
+next function and Reqparam's error message.
+
+Example:
+
+```javascript
+let mid = reqparams({
+  'email': { type: String, validate: notEmpty },
+});
+
+router.post('/login', mid, (req, res) => { /* ... */ });
+// If this route receives a call with the following body:
+//
+// { 'username': 'potato' }
+//
+// The default error handler will respond with:
+//
+// (400) { error: 'Param \'email\' missing' }
+
+let mid2 = reqparams({
+  'email': { type: String, validate: notEmpty },
+}, {
+  onerror: (_req, res, _next, message) => {
+    return res.status(401).json({
+      error: message,
+      error_code: 'INVALID_INPUT',
+    });
+  },
+});
+
+router.post('/login2', mid2, (req, res) => { /* ... */ });
+// If this route receives a call with the following body:
+//
+// { 'username': 'potato' }
+//
+// The given error handler will be called and respond with:
+//
+// (401) { error: 'Param \'email\' missing', error_code: 'INVALID_INPUT' }
+```
 
 ---
 
