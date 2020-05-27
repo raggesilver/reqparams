@@ -13,9 +13,6 @@ jest:
   script:
     - yarn install
     - yarn run test
-  artifacts:
-    paths:
-      - node_modules/
 
 deploy:
   stage: deploy
