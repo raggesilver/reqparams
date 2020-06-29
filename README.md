@@ -112,11 +112,12 @@ field is valid outside your route, which can make your code way cleaner.
 - If they return a string, they will fail and use the string as the error
 message
 
-As of `2.1.0` validate may be a single function on an array of functions. These
-functions should be prototyped:
+As of `2.1.0` validate may be a single function on an array of functions (if you
+pass an array of functions they will be executed in parallel with `Promise.all`)
+. These functions should be prototyped:
 
 ```typescript
-(val: any): Boolean|String|Promise<Boolean|String>
+(val: any, req: express.Request): Boolean|String|Promise<Boolean|String>
 ```
 
 #### either

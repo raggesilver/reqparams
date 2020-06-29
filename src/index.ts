@@ -125,7 +125,7 @@ class ReqParam {
         }
 
         // Run all at once
-        let valids: any = await Promise.all(fns.map(v => v(val)));
+        let valids: any = await Promise.all(fns.map(v => v(val, req)));
         // Check all the results, if any failed return
         for (const valid of valids) {
           if (valid !== true) {
@@ -200,7 +200,7 @@ export const reqall = (source: string, params: Params, options: ParamOptions|nul
 };
 
 export interface ValidateFunction {
-  (val: any): Boolean | String | Promise<Boolean|String>;
+  (val: any, req: express.Request): Boolean | String | Promise<Boolean|String>;
 };
 
 export const notEmpty: ValidateFunction = (val) => {

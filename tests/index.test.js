@@ -41,6 +41,21 @@ let strictMid = reqall('body', {
 
 app.post('/strict', strictMid, (req, res) => res.json(req.body));
 
+const passReqMid = reqparams({
+  user: {
+    type: String,
+    validate: [
+      notEmpty,
+      (val, req) => {
+        req.body.user = `${val} -- I got more stuff`;
+        return (true);
+      },
+    ],
+  },
+});
+
+app.post('/passreq', passReqMid, (req, res) => res.status(200).json(req.body));
+
 let handler = app.listen(port);
 
 // Setup tests
@@ -126,6 +141,19 @@ test('POST /sctrict { some.key: String } FAIL', async () => {
   expect(data).toBe(undefined);
   expect(error).not.toBe(undefined);
   expect(error.response.data.error_code).toBe('INVALID_INPUT');
+});
+
+test('POST /passreq { user: \'aaa\' }', async () => {
+  expect.assertions(1);
+  try {
+    const user = 'aaa';
+    const { data } = await axios.post(`http://127.0.0.1:${port}/passreq`, { user });
+
+    expect(data?.user).toBe(`${user} -- I got more stuff`);
+  }
+  catch (e) {
+    console.error(e);
+  }
 });
 
 // Close listener after testing
