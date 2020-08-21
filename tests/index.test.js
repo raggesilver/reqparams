@@ -1,7 +1,8 @@
 // Setup server
 
-const express     = require('express');
-const bodyParser  = require('body-parser');
+const express    = require('express');
+const bodyParser = require('body-parser');
+const mongoose   = require('mongoose');
 
 const { reqparams, validId, notEmpty, reqall } = require('../dist');
 const app   = express();
@@ -56,15 +57,29 @@ const passReqMid = reqparams({
 
 app.post('/passreq', passReqMid, (req, res) => res.status(200).json(req.body));
 
+const resourceByIdMid = reqall(
+  'params',
+  { id: { type: String, validate: validId }}
+);
+
+app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
+  return res.status(200).json({
+    _id: req.params.id,
+    data: 'blablabla',
+  });
+});
+
 let handler = app.listen(port);
 
 // Setup tests
 
-const axios = require('axios');
+const axios = require('axios').default;
+
+axios.defaults.baseURL = `http://127.0.0.1:${port}`;
 
 test('POST /a { username: notEmpty } FAIL', async () => {
   try {
-    await axios.post(`http://127.0.0.1:${port}/a`);
+    await axios.post(`/a`);
   }
   catch (e) {
     expect(e.response.status).toBe(400);
@@ -73,7 +88,7 @@ test('POST /a { username: notEmpty } FAIL', async () => {
 });
 
 test('POST /a { username: notEmpty } OK', async () => {
-  let { data } = await axios.post(`http://127.0.0.1:${port}/a`, {
+  let { data } = await axios.post(`/a`, {
     username: 'aa',
   });
   expect(data).toMatchObject({});
@@ -81,7 +96,7 @@ test('POST /a { username: notEmpty } OK', async () => {
 
 test('POST /nest { username: notEmpty } FAIL', async () => {
   try {
-    await axios.post(`http://127.0.0.1:${port}/nest`, {
+    await axios.post(`/nest`, {
       name: {
         first: 'Paulo',
       },
@@ -96,7 +111,7 @@ test('POST /nest { username: notEmpty } FAIL', async () => {
 });
 
 test('POST /nest { username: notEmpty } OK', async () => {
-  let { data } = await axios.post(`http://127.0.0.1:${port}/nest`, {
+  let { data } = await axios.post(`/nest`, {
     name: {
       first: 'Paulo',
       last: 'Queiroz',
@@ -106,7 +121,7 @@ test('POST /nest { username: notEmpty } OK', async () => {
 });
 
 test('POST /sctrict { some.key: String } OK', async () => {
-  let { data } = await axios.post(`http://127.0.0.1:${port}/strict`, {
+  let { data } = await axios.post(`/strict`, {
     some: {
       key: 'some value',
       removeMe: true,
@@ -127,7 +142,7 @@ test('POST /sctrict { some.key: String } FAIL', async () => {
   let error = undefined;
 
   try {
-    let { data: d } = await axios.post(`http://127.0.0.1:${port}/strict`, {
+    let { data: d } = await axios.post(`/strict`, {
       some: {
         key: 13,
       },
@@ -147,9 +162,46 @@ test('POST /passreq { user: \'aaa\' }', async () => {
   expect.assertions(1);
   try {
     const user = 'aaa';
-    const { data } = await axios.post(`http://127.0.0.1:${port}/passreq`, { user });
+    const { data } = await axios.post(`/passreq`, { user });
 
     expect(data?.user).toBe(`${user} -- I got more stuff`);
+  }
+  catch (e) {
+    console.error(e);
+  }
+});
+
+// Test validId ================================================================
+
+test('GET /resource_by_id/:id INVALID', async () => {
+  expect.assertions(1);
+  try {
+    const invalid_id = 'tttttttttttt'; // Not hex
+    await axios.get(`/resource_by_id/${invalid_id}`);
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Invalid parameter id');
+  }
+});
+
+test('GET /resource_by_id/:id INVALID 2', async () => {
+  expect.assertions(1);
+  try {
+    const invalid_id = 'aaaaaaaaaaaaaaaaaaaaaaaaa'; // Not 12 nor 24 chars long
+    await axios.get(`/resource_by_id/${invalid_id}`);
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Invalid parameter id');
+  }
+});
+
+test('GET /resource_by_id/:id OK', async () => {
+  expect.assertions(1);
+  try {
+    const id = mongoose.Types.ObjectId().toHexString();
+    const { data } = await axios.get(`/resource_by_id/${id}`);
+
+    expect(data?._id).toBe(id);
   }
   catch (e) {
     console.error(e);

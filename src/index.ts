@@ -216,7 +216,10 @@ export const notEmpty: ValidateFunction = (val) => {
 };
 
 export const validId: ValidateFunction = (val) => {
-  return mongoose.Types.ObjectId.isValid(val);
+  return (
+    typeof val === 'string'
+    && /^([a-f0-9]{12}|[a-f0-9]{24})$/.test(val)
+  );
 };
 
 export const unique = async (val: any, key: string, model: mongoose.Model<any>):
