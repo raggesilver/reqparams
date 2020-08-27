@@ -147,6 +147,14 @@ If neither `username` nor `email` are present the request will be refused with:
 }
 ```
 
+#### nullable
+
+Nullable was introduced in 3.2.0 and it's purpose is to state that a non-required
+parameter can't be `null` -- it has to either be of the given `type` or not
+present in the body.
+
+> As of 3.2.0 any param with `required: false` accepts `null` as a valid value
+
 #### all the rest
 
 All the other keys supported are easy to understand from the

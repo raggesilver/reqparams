@@ -30,6 +30,7 @@ export interface Params {
     'type': Function;
     'msg': string;
     'either': string|number|symbol;
+    'nullable': boolean;
   };
 };
 
@@ -102,14 +103,20 @@ class ReqParam {
 
         // If type was specified
         const val: any = _.get(this.source, key);
+
+        // We accept `null` values for non-required params that don't have
+        // `nullable` set to `false`
+        if (val === null && params[key].required === false && params[key].nullable !== false) {
+          continue ;
+        }
+
         if ('type' in params[key]) {
           if (typeof params[key].type !== 'function')
             throw new TypeError(
               'Key type must be of type Function (e.g. Number, Array, ...)'
             );
 
-          if (Object.prototype.toString.call(val) !==
-              Object.prototype.toString.call(params[key].type())) {
+          if (Object.prototype.toString.call(val) !== Object.prototype.toString.call(params[key].type())) {
             // Value has wrong type
             return (this.options.onerror || defaultOnerror)(req, res, next, params[key].msg || `Invalid type for param '${key}'`);
           }

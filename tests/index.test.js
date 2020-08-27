@@ -69,6 +69,17 @@ app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
   });
 });
 
+const allowNull = reqparams({
+  name: { type: String, required: false }, // May be null
+  age: { type: Number, required: false, nullable: false, validate: v => v >= 18 },
+}, {
+  strict: true,
+});
+
+app.post('/allow_null', allowNull, (req, res) => {
+  return res.json(req.body);
+});
+
 let handler = app.listen(port);
 
 // Setup tests
@@ -202,6 +213,51 @@ test('GET /resource_by_id/:id OK', async () => {
     const { data } = await axios.get(`/resource_by_id/${id}`);
 
     expect(data?._id).toBe(id);
+  }
+  catch (e) {
+    console.error(e);
+  }
+});
+
+// Test null values ============================================================
+
+test('POST /allow_null INVALID', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/allow_null', { name: null, age: null });
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Invalid type for param \'age\'');
+  }
+});
+
+test('POST /allow_null OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/allow_null', { name: null, age: 19 });
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e);
+  }
+});
+
+test('POST /allow_null OK 2', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/allow_null', { name: null });
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e);
+  }
+});
+
+test('POST /allow_null OK 3', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/allow_null', {});
+    expect(res.status).toBe(200);
   }
   catch (e) {
     console.error(e);
