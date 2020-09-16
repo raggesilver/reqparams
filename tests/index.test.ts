@@ -12,7 +12,7 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import * as mongoose from 'mongoose';
 
-import { reqparams, reqall, validId, notEmpty } from '../src';
+import { reqparams, reqall, reqquery, validId, notEmpty } from '../src';
 
 const app = express();
 const port = Number(process.env.PORT) || 9143;
@@ -116,6 +116,46 @@ const requiredIf2 = reqparams({
 
 app.post('/required_if2', requiredIf2, (req, res) => {
   return res.json(req.body);
+});
+
+const requiredIf3 = reqparams({
+  'user.name.first': { type: String },
+  'user.name.last': { type: String },
+  'user.partner.name.first': { type: String, validate: notEmpty, requiredIf: { $exists: 'user.partner' }},
+  'user.partner.name.last': { type: String, validate: notEmpty, requiredIf: { $exists: 'user.partner' }},
+});
+
+app.post('/required_if3', requiredIf3, (req, res) => {
+  return res.json(req.body);
+});
+
+const eitherMid = reqparams({
+  email: { type: String, either: 1 },
+  phone: { type: String, either: 1},
+  password: { type: String },
+});
+
+app.post('/either', eitherMid, (req, res) => {
+  return res.json(req.body);
+});
+
+const newTodoMid = reqparams({
+  todo: { type: Array, validate: notEmpty },
+  name: { type: String, validate: notEmpty },
+  something: { required: false, validate: notEmpty },
+});
+
+app.post('/todo', newTodoMid, (req, res) => {
+  return res.json(req.body);
+});
+
+const findTodoMid = reqquery({
+  author: { type: String, either: 1 },
+  date: { type: Date, either: 1 },
+});
+
+app.get('/todo/search', findTodoMid, (req, res) => {
+  return res.json(req.query);
 });
 
 const handler = app.listen(port);
@@ -229,7 +269,7 @@ test('POST /passreq { user: \'aaa\' }', async () => {
 
 // Test validId ================================================================
 
-test('GET /resource_by_id/:id INVALID', async () => {
+test('GET /resource_by_id/:id FAIL', async () => {
   expect.assertions(1);
   try {
     const invalid_id = 'tttttttttttt'; // Not hex
@@ -240,7 +280,7 @@ test('GET /resource_by_id/:id INVALID', async () => {
   }
 });
 
-test('GET /resource_by_id/:id INVALID 2', async () => {
+test('GET /resource_by_id/:id FAIL 2', async () => {
   expect.assertions(1);
   try {
     const invalid_id = 'aaaaaaaaaaaaaaaaaaaaaaaaa'; // Not 12 nor 24 chars long
@@ -266,7 +306,7 @@ test('GET /resource_by_id/:id OK', async () => {
 
 // Test null values ============================================================
 
-test('POST /allow_null INVALID', async () => {
+test('POST /allow_null FAIL', async () => {
   expect.assertions(1);
   try {
     await axios.post('/allow_null', { name: null, age: null });
@@ -309,7 +349,7 @@ test('POST /allow_null OK 3', async () => {
   }
 });
 
-test('POST /required_and_nullable INVALID', async () => {
+test('POST /required_and_nullable FAIL', async () => {
   expect.assertions(1);
   try {
     await axios.post('/required_and_nullable', {});
@@ -332,7 +372,7 @@ test('POST /required_and_nullable OK', async () => {
 
 // Test null values ============================================================
 
-test('POST /required_if INVALID', async () => {
+test('POST /required_if FAIL', async () => {
   expect.assertions(1);
   try {
     await axios.post('/required_if', { name: { whatever: 'Blah' }});
@@ -342,7 +382,7 @@ test('POST /required_if INVALID', async () => {
   }
 });
 
-test('POST /required_if INVALID 2', async () => {
+test('POST /required_if FAIL 2', async () => {
   expect.assertions(1);
   try {
     await axios.post('/required_if', { name: { first: 'Hacker' }});
@@ -367,6 +407,104 @@ test('POST /required_if2 OK', async () => {
   expect.assertions(1);
   try {
     const res = await axios.post('/required_if2', { name: { address: { line1: '123 Here St' }}});
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('POST /required_if3 FAIL', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/required_if3', {
+      user: {
+        name: {
+          first: 'Mr',
+          last: 'Hacker',
+        },
+        partner: {
+          blah: true,
+        },
+      },
+    });
+  }
+  catch (e) {
+    expect(e.response?.data?.error).toBe('user.partner.name.first is required if user.partner is present');
+  }
+});
+
+// Test either =================================================================
+
+test('POST /either OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/either', { email: 'john@mail.com', password: 'sEcUrE123!' });
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('POST /either FAIL', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/either', { password: 'sEcUrE123!' });
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('At least one of email, phone must be present');
+  }
+});
+
+// Test notEmpty ===============================================================
+
+test('POST /todo OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/todo', { todo: ['Chores', 'Buy stuff', 'Homework'], name: 'Today\'s tasks' });
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('POST /todo FAIL', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/todo', { todo: [], name: 'I\'m lazy' });
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Invalid parameter todo');
+  }
+});
+
+test('POST /todo FAIL', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: { 'willNotEmptyFail?': true }});
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Invalid parameter something');
+  }
+});
+
+test('GET /todo/search OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.get('/todo/search', { params: { author: 'Me' }});
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('GET /todo/search OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.get('/todo/search', { params: { date: new Date }});
     expect(res.status).toBe(200);
   }
   catch (e) {

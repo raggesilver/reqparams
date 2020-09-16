@@ -142,10 +142,12 @@ abstract class ReqParam {
         }
 
         if ('type' in params[key]) {
-          if (typeof params[key].type !== 'function')
+          /* istanbul ignore next */
+          if (typeof params[key].type !== 'function') {
             throw new TypeError(
               'Key type must be of type Function (e.g. Number, Array, ...)'
             );
+          }
 
           if (
             Object.prototype.toString.call(val) !==
@@ -221,6 +223,7 @@ class ReqAll extends ReqParam {
   }
 
   extractSource(req: express.Request): Object {
+    /* istanbul ignore next */
     if (!(this.src in req)) {
       throw new Error(`${this.source} key does not exist in express request`);
     }
@@ -245,11 +248,11 @@ export const notEmpty: ValidateFunction = (val) => {
     case 'string':
       return (!/^\s*$/.test(val));
     case 'object':
-      if (val instanceof Array)
-        return (val.length != 0);
-    default:
-      return false;
+      if (val instanceof Array) {
+        return (val.length !== 0);
+      }
   }
+  return false;
 };
 
 export const validId: ValidateFunction = (val) => {
@@ -259,13 +262,14 @@ export const validId: ValidateFunction = (val) => {
   );
 };
 
+/* istanbul ignore next */
 export const unique = async (val: any, key: string, model: mongoose.Model<any>):
   Promise<Boolean|String> => {
   try {
     let u = await model.findOne({ [key]: val });
     return (u) ? `${key} already in use` : true;
   }
-  catch (_) {
+  catch {
     return false;
   }
 }
