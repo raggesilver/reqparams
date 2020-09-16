@@ -13,6 +13,10 @@ jest:
   script:
     - yarn install
     - yarn run test
+  coverage: /All\sfiles.*?\s+(\d+.\d+)/
+  artifacts:
+    reports:
+      cobertura: coverage/cobertura-coverage.xml
 
 deploy:
   stage: deploy
