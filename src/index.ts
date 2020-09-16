@@ -19,44 +19,55 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import express = require('express');
-import mongoose = require('mongoose');
-import _ = require('@raggesilver/hidash');
+import * as express from 'express';
+import * as mongoose from 'mongoose';
+import * as _ from '@raggesilver/hidash';
+
+export interface RequiredIfQuery {
+  '$exists'?: string;
+  // '$and': Array<RequiredIfQuery>;
+  // '$or': Array<RequiredIfQuery>;
+};
+
+export interface ValidateFunction {
+  (val: any, req: express.Request): Boolean | String | Promise<Boolean|String>;
+};
 
 export interface Params {
   [key: string]: {
-    'validate': Function|Array<Function>;
-    'required': boolean;
-    'type': Function;
-    'msg': string;
-    'either': string|number|symbol;
-    'nullable': boolean;
+    'validate'?: ValidateFunction|Array<ValidateFunction>;
+    'required'?: boolean;
+    'requiredIf'?: RequiredIfQuery;
+    'type'?: Function;
+    'msg'?: string;
+    'either'?: string|number|symbol;
+    'nullable'?: boolean;
   };
 };
 
+export type OnErrorFunction = (_req: express.Request, res: express.Response, _next: express.NextFunction, message: string) => any;
+
 export interface ParamOptions {
-  'strict': boolean;
-  'onerror': Function;
+  'strict'?: boolean;
+  'onerror'?: OnErrorFunction;
 };
 
-const defaultOnerror = (_req: express.Request, res: express.Response, _next: express.NextFunction, message: string) => {
+const defaultOnerror: OnErrorFunction = (_req, res, _next, message) => {
   return res.status(400).json({
     error: message,
   });
 };
 
-class ReqParam {
+abstract class ReqParam {
   source: any;
   sourcePath: any;
   // Reference so other functions can use it
   params: Params = {};
   options: ParamOptions = <ParamOptions> {};
 
-  extractSource(req: express.Request): Object {
-    return this.source = req['body'];
-  }
+  abstract extractSource(req: express.Request): Object;
 
-  exec(params: Params): Function {
+  exec(params: Params): express.Handler {
     return async (req: express.Request, res: express.Response,
       next: express.NextFunction) => {
 
@@ -69,16 +80,27 @@ class ReqParam {
       for (const key in params) {
 
         if (params[key].either) {
-          if (!(params[key].either in either))
-            either[params[key].either] = new Array();
+          if (!(params[key].either! in either))
+            either[params[key].either!] = new Array();
           // Action is to just push the key to the either group, it will later
           // on be validated (all at once)
-          either[params[key].either].push(key);
+          either[params[key].either!].push(key);
         }
 
         // Check if key is present
         if (!_.exists(this.source, key)) {
           // Handle key not present
+          if (
+            params[key].requiredIf?.$exists
+            && _.exists(this.source, params[key].requiredIf?.$exists!)
+          ) {
+            return (
+              (this.options.onerror || defaultOnerror)(req, res, next,
+                params[key].msg ||
+                `${key} is required if ${params[key].requiredIf?.$exists} is present`
+              )
+            );
+          }
           if (params[key].required === false)
             continue ;
           // `either` is a new option a parameter can take. Each param can be
@@ -104,9 +126,16 @@ class ReqParam {
         // If type was specified
         const val: any = _.get(this.source, key);
 
-        // We accept `null` values for non-required params that don't have
-        // `nullable` set to `false`
-        if (val === null && params[key].required === false && params[key].nullable !== false) {
+        // We accept `null` values for:
+        if (
+          val === null
+          && (
+            // non-required params that don't have `nullable` set to `false`
+            (params[key].required === false && params[key].nullable !== false)
+            // or for params that have `nullable` set to true
+            || (params[key].nullable === true)
+          )
+        ) {
           continue ;
         }
 
@@ -116,7 +145,10 @@ class ReqParam {
               'Key type must be of type Function (e.g. Number, Array, ...)'
             );
 
-          if (Object.prototype.toString.call(val) !== Object.prototype.toString.call(params[key].type())) {
+          if (
+            Object.prototype.toString.call(val) !==
+              Object.prototype.toString.call(params[key].type!())
+          ) {
             // Value has wrong type
             return (this.options.onerror || defaultOnerror)(req, res, next, params[key].msg || `Invalid type for param '${key}'`);
           }
@@ -178,7 +210,7 @@ class ReqParam {
 class ReqAll extends ReqParam {
   src: string;
 
-  constructor(src: string, options: ParamOptions|null) {
+  constructor(src: string, options?: ParamOptions) {
     super();
 
     this.sourcePath = src;
@@ -194,20 +226,16 @@ class ReqAll extends ReqParam {
   }
 }
 
-export const reqparams = (params: Params, options: ParamOptions|null): Function => {
+export const reqparams = (params: Params, options?: ParamOptions) => {
   return new ReqAll('body', options).exec(params);
 };
 
-export const reqquery = (params: Params, options: ParamOptions|null): Function => {
+export const reqquery = (params: Params, options?: ParamOptions) => {
   return new ReqAll('query', options).exec(params);
 };
 
-export const reqall = (source: string, params: Params, options: ParamOptions|null) => {
+export const reqall = (source: string, params: Params, options?: ParamOptions) => {
   return new ReqAll(source, options).exec(params);
-};
-
-export interface ValidateFunction {
-  (val: any, req: express.Request): Boolean | String | Promise<Boolean|String>;
 };
 
 export const notEmpty: ValidateFunction = (val) => {

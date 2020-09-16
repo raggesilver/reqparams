@@ -32,8 +32,8 @@
   },
   "dependencies": {
     "@raggesilver/hidash": "^2.0.2",
-    "@types/jest": "^26.0.10",
+    "@types/jest": "^26.0.13",
     "mongoose": "^5.9.14",
-    "ts-jest": "^26.2.0"
+    "ts-jest": "^26.3.0"
   }
 }

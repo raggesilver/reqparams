@@ -1,34 +1,43 @@
-// Setup server
 
-const express    = require('express');
-const bodyParser = require('body-parser');
-const mongoose   = require('mongoose');
+// ╭━━━╮             ╭━━━╮  ╭╮
+// ┃╭━╮┃             ┃╭━╮┃ ╭╯╰╮
+// ┃╰━━┳━━┳━┳╮╭┳━━┳━╮┃╰━━┳━┻╮╭╋╮╭┳━━╮
+// ╰━━╮┃┃━┫╭┫╰╯┃┃━┫╭╯╰━━╮┃┃━┫┃┃┃┃┃╭╮┃
+// ┃╰━╯┃┃━┫┃╰╮╭┫┃━┫┃ ┃╰━╯┃┃━┫╰┫╰╯┃╰╯┃
+// ╰━━━┻━━┻╯ ╰╯╰━━┻╯ ╰━━━┻━━┻━┻━━┫╭━╯
+//                               ┃┃
+//  ---------------------------- ╰╯ --------------------------------------------
 
-const { reqparams, validId, notEmpty, reqall } = require('../dist');
-const app   = express();
-const port  = process.env.PORT || 9143;
+import * as express from 'express';
+import * as bodyParser from 'body-parser';
+import * as mongoose from 'mongoose';
+
+import { reqparams, reqall, validId, notEmpty } from '../src';
+
+const app = express();
+const port = Number(process.env.PORT) || 9143;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-let postAMid = reqparams({
+const postAMid = reqparams({
   username: { validate: notEmpty },
 });
 
 app.post('/a', postAMid, (_req, res) => {
-  res.json({});
+  return res.json({});
 });
 
-let postNest = reqparams({
+const postNest = reqparams({
   'name.first': {},
   'name.last': {},
 });
 
 app.post('/nest', postNest, (_req, res) => {
-  res.json({});
+  return res.json({});
 });
 
-let strictMid = reqall('body', {
+const strictMid = reqall('body', {
   'some.key': { type: String },
 }, {
   strict: true,
@@ -80,9 +89,35 @@ app.post('/allow_null', allowNull, (req, res) => {
   return res.json(req.body);
 });
 
-let handler = app.listen(port);
+const requiredAndNullable = reqparams({
+  name: { type: String, nullable: true }, // May be null
+}, {
+  strict: true,
+});
 
-// Setup tests
+app.post('/required_and_nullable', requiredAndNullable, (req, res) => {
+  return res.json(req.body);
+});
+
+const requiredIf = reqparams({
+  'name.first': { requiredIf: { $exists: 'name' }},
+  'name.last': { requiredIf: { $exists: 'name' }},
+});
+
+app.post('/required_if', requiredIf, (req, res) => {
+  return res.json(req.body);
+});
+
+const handler = app.listen(port);
+
+// ╭━━╮            ╭╮      ╭╮
+// ┃╭╮┃           ╭╯╰╮    ╭╯╰╮
+// ┃╰╯╰┳━━┳━━┳┳━╮ ╰╮╭╋━━┳━┻╮╭╋━━╮
+// ┃╭━╮┃┃━┫╭╮┣┫╭╮╮ ┃┃┃┃━┫━━┫┃┃━━┫
+// ┃╰━╯┃┃━┫╰╯┃┃┃┃┃ ┃╰┫┃━╋━━┃╰╋━━┃
+// ╰━━━┻━━┻━╮┣┻╯╰╯ ╰━┻━━┻━━┻━┻━━╯
+//        ╭━╯┃
+//  ----- ╰━━╯ _________________________________________________________________
 
 const axios = require('axios').default;
 
@@ -131,7 +166,7 @@ test('POST /nest { username: notEmpty } OK', async () => {
   expect(data).toMatchObject({});
 });
 
-test('POST /sctrict { some.key: String } OK', async () => {
+test('POST /strict { some.key: String } OK', async () => {
   let { data } = await axios.post(`/strict`, {
     some: {
       key: 'some value',
@@ -148,7 +183,7 @@ test('POST /sctrict { some.key: String } OK', async () => {
   expect(data.some.key).toBe('some value');
 });
 
-test('POST /sctrict { some.key: String } FAIL', async () => {
+test('POST /strict { some.key: String } FAIL', async () => {
   let data = undefined;
   let error = undefined;
 
@@ -178,7 +213,7 @@ test('POST /passreq { user: \'aaa\' }', async () => {
     expect(data?.user).toBe(`${user} -- I got more stuff`);
   }
   catch (e) {
-    console.error(e);
+    console.error(e.response?.data?.error || e);
   }
 });
 
@@ -215,7 +250,7 @@ test('GET /resource_by_id/:id OK', async () => {
     expect(data?._id).toBe(id);
   }
   catch (e) {
-    console.error(e);
+    console.error(e.response?.data?.error || e);
   }
 });
 
@@ -238,7 +273,7 @@ test('POST /allow_null OK', async () => {
     expect(res.status).toBe(200);
   }
   catch (e) {
-    console.error(e);
+    console.error(e.response?.data?.error || e);
   }
 });
 
@@ -249,7 +284,7 @@ test('POST /allow_null OK 2', async () => {
     expect(res.status).toBe(200);
   }
   catch (e) {
-    console.error(e);
+    console.error(e.response?.data?.error || e);
   }
 });
 
@@ -260,7 +295,61 @@ test('POST /allow_null OK 3', async () => {
     expect(res.status).toBe(200);
   }
   catch (e) {
-    console.error(e);
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('POST /required_and_nullable INVALID', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/required_and_nullable', {});
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('Parameter name missing');
+  }
+});
+
+test('POST /required_and_nullable OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/required_and_nullable', { name: null });
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+// Test null values ============================================================
+
+test('POST /required_if INVALID', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/required_if', { name: { whatever: 'Blah' }});
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('name.first is required if name is present');
+  }
+});
+
+test('POST /required_if INVALID 2', async () => {
+  expect.assertions(1);
+  try {
+    await axios.post('/required_if', { name: { first: 'Hacker' }});
+  }
+  catch (e) {
+    expect(e.response?.data.error).toBe('name.last is required if name is present');
+  }
+});
+
+test('POST /required_if OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/required_if', { name: { first: 'Mr', last: 'Hacker' }});
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
   }
 });
 

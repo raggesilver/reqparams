@@ -155,6 +155,70 @@ present in the body.
 
 > As of 3.2.0 any param with `required: false` accepts `null` as a valid value
 
+> As of 3.3.0 you may use `nullable: true` to indicate that a required parameter
+> can also be `null`
+
+#### requiredIf
+
+requiredIf was introcued in 3.3.0, it allows you to say that a parameter is
+only required if a certain condition is met. For now only one condition may
+be used: `$exists`.
+
+It works like this:
+
+```javascript
+const registerMid = reqparams({
+  'email': { type: String, validate: notEmpty },
+  'password': { type: String, validate: v => passwordRegex.test(v) },
+
+  'address.line1': { type: String, requiredIf: { $exists: 'address' }},
+  'address.line2': { type: String, requiredIf: { $exists: 'address' }},
+  'address.city': { type: String, requiredIf: { $exists: 'address' }},
+  'address.state': { type: String, requiredIf: { $exists: 'address' }},
+  'address.zip': { type: String, requiredIf: { $exists: 'address' }},
+});
+```
+
+This example makes `address.line1`, `address.line2`, ..., only be required if
+a parent node `address` is present -- which means that this request can succeed
+with both of these request bodies:
+
+```json
+{
+  "email": "john@mail.com",
+  "password": "sEcUrE123!"
+}
+```
+
+```json
+{
+  "email": "john@mail.com",
+  "password": "sEcUrE123!",
+  "address": {
+    "line1": "600 Here St",
+    "line2": "",
+    "city": "Scranton",
+    "state": "NY",
+    "zip": "12345"
+  }
+}
+```
+
+But not with this one:
+
+```json
+{
+  "email": "john@mail.com",
+  "password": "sEcUrE123!",
+  "address": {
+    "blah": "blah blah"
+  }
+}
+```
+
+Because in the last one `address` exists and it does not contain `line1`, `line2`
+...
+
 #### all the rest
 
 All the other keys supported are easy to understand from the
