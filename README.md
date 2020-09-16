@@ -219,6 +219,9 @@ But not with this one:
 Because in the last one `address` exists and it does not contain `line1`, `line2`
 ...
 
+**Important note:** `requiredIf` will overwrite other existence conditionals
+like `either` and `required`.
+
 #### all the rest
 
 All the other keys supported are easy to understand from the

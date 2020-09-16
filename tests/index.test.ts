@@ -108,6 +108,16 @@ app.post('/required_if', requiredIf, (req, res) => {
   return res.json(req.body);
 });
 
+const requiredIf2 = reqparams({
+  'user.name.first': { requiredIf: { $exists: 'user.name' }},
+  'user.name.last': { requiredIf: { $exists: 'user.name' }},
+  'user.address.line1': { requiredIf: { $exists: 'user' }},
+});
+
+app.post('/required_if2', requiredIf2, (req, res) => {
+  return res.json(req.body);
+});
+
 const handler = app.listen(port);
 
 // ╭━━╮            ╭╮      ╭╮
@@ -346,6 +356,17 @@ test('POST /required_if OK', async () => {
   expect.assertions(1);
   try {
     const res = await axios.post('/required_if', { name: { first: 'Mr', last: 'Hacker' }});
+    expect(res.status).toBe(200);
+  }
+  catch (e) {
+    console.error(e.response?.data?.error || e);
+  }
+});
+
+test('POST /required_if2 OK', async () => {
+  expect.assertions(1);
+  try {
+    const res = await axios.post('/required_if2', { name: { address: { line1: '123 Here St' }}});
     expect(res.status).toBe(200);
   }
   catch (e) {

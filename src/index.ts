@@ -87,19 +87,21 @@ abstract class ReqParam {
           either[params[key].either!].push(key);
         }
 
-        // Check if key is present
+        // Parameter `key` is not present
         if (!_.exists(this.source, key)) {
-          // Handle key not present
-          if (
-            params[key].requiredIf?.$exists
-            && _.exists(this.source, params[key].requiredIf?.$exists!)
-          ) {
-            return (
-              (this.options.onerror || defaultOnerror)(req, res, next,
-                params[key].msg ||
-                `${key} is required if ${params[key].requiredIf?.$exists} is present`
-              )
-            );
+          // If there is an $exists condition
+          if (params[key].requiredIf?.$exists) {
+            // And the condition is true
+            if (_.exists(this.source, params[key].requiredIf?.$exists!)) {
+              return (
+                (this.options.onerror || defaultOnerror)(req, res, next,
+                  params[key].msg ||
+                  `${key} is required if ${params[key].requiredIf?.$exists} is present`
+                )
+              );
+            }
+            // $exists query is present but condition was not met, so skip it
+            continue;
           }
           if (params[key].required === false)
             continue ;
