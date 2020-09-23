@@ -142,7 +142,7 @@ app.post('/either', eitherMid, (req, res) => {
 const newTodoMid = reqparams({
   todo: { type: Array, validate: notEmpty },
   name: { type: String, validate: notEmpty },
-  something: { required: false, validate: notEmpty },
+  something: { required: false, validate: (v, r) => notEmpty(v, r) || 'Something wrong is not right', },
 });
 
 app.post('/todo', newTodoMid, (req, res) => {
@@ -486,7 +486,7 @@ test('POST /todo FAIL', async () => {
     await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: { 'willNotEmptyFail?': true }});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid parameter something');
+    expect(e.response?.data.error).toBe('Something wrong is not right');
   }
 });
 
