@@ -8,7 +8,7 @@
     "dist/**/*"
   ],
   "scripts": {
-    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
     "build": "tsc",
     "test": "jest"
   },
@@ -22,18 +22,17 @@
   "homepage": "https://gitlab.com/raggesilver-npm/reqparams#README",
   "devDependencies": {
     "@types/express": "^4.17.6",
-    "@types/mongoose": "^5.7.19",
+    "@types/jest": "^26.0.15",
+    "@types/mongoose": "^5.7.37",
     "@types/node": "^14.6.0",
     "axios": "^0.19.2",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "jest": "^26.4.1",
+    "ts-jest": "^26.4.4",
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@raggesilver/hidash": "^2.0.2",
-    "@types/jest": "^26.0.13",
-    "mongoose": "^5.9.14",
-    "ts-jest": "^26.3.0"
+    "@raggesilver/hidash": "^2.0.2"
   }
 }

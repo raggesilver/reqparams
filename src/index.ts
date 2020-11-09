@@ -20,7 +20,7 @@
  */
 
 import { Request, Response, NextFunction, Handler } from 'express';
-import * as mongoose from 'mongoose';
+import { Model } from 'mongoose';
 import * as _ from '@raggesilver/hidash';
 
 export interface RequiredIfQuery {
@@ -325,7 +325,7 @@ export const validId: ValidateFunction = (val) => {
 };
 
 /* istanbul ignore next */
-export const unique = async (val: any, key: string, model: mongoose.Model<any>): Promise<Boolean|String> => {
+export const unique = async (val: any, key: string, model: Model<any>): Promise<Boolean|String> => {
   try {
     let u = await model.findOne({ [key]: val });
     return (u) ? `${key} already in use` : true;

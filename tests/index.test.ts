@@ -10,7 +10,7 @@
 
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
-import * as mongoose from 'mongoose';
+import { randomBytes } from 'crypto';
 
 import { reqparams, reqall, reqquery, validId, notEmpty } from '../src';
 
@@ -294,7 +294,7 @@ test('GET /resource_by_id/:id FAIL 2', async () => {
 test('GET /resource_by_id/:id OK', async () => {
   expect.assertions(1);
   try {
-    const id = mongoose.Types.ObjectId().toHexString();
+    const id = randomBytes(12).toString('hex');
     const { data } = await axios.get(`/resource_by_id/${id}`);
 
     expect(data?._id).toBe(id);
