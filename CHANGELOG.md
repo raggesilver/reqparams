@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 3.3.3
+
+<small>2020.11.30</small>
+
+- Keys of type `Date` will now accept ISO Date strings, as this is the most
+common way dates are send from clients to servers
+
 ## Version 3.3.1
 
 <small>2020.09.16</small>

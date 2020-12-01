@@ -158,6 +158,23 @@ app.get('/todo/search', findTodoMid, (req, res) => {
   return res.json(req.query);
 });
 
+const notUnderageMid = reqall('body', {
+  dob: {
+    type: Date,
+    validate: (v: Date) => {
+      return (
+        (Date.now() - v.getTime() >= 1000 * 60 * 60 * 24 * 365 * 18)
+          ? true : 'Grow up first, kid'
+      );
+    },
+  },
+});
+
+app.post('/not_underage', notUnderageMid, (req, res) => {
+  if (!(req.body.dob instanceof Date)) throw new Error('Dob is not a Date');
+  return res.json(req.body);
+});
+
 const handler = app.listen(port);
 
 // ╭━━╮            ╭╮      ╭╮
@@ -509,6 +526,74 @@ test('GET /todo/search OK', async () => {
   }
   catch (e) {
     console.error(e.response?.data?.error || e);
+  }
+});
+
+// Test date values ============================================================
+
+test('POST /not_underage OK', async () => {
+  const dob = new Date();
+
+  dob.setFullYear(1990);
+
+  const res = await axios.post('/not_underage', {
+    dob,
+  });
+
+  expect(res.status).toBe(200);
+  expect(res.data?.dob).toBe(dob.toISOString());
+});
+
+test('POST /not_underage OK 2', async () => {
+  const dob = new Date();
+
+  dob.setFullYear(1990);
+
+  const res = await axios.post('/not_underage', {
+    // This should actually be the same thing as the previous test
+    dob: dob.toISOString(),
+  });
+
+  expect(res.status).toBe(200);
+  expect(res.data?.dob).toBe(dob.toISOString());
+});
+
+test('POST /not_underage FAIL', async () => {
+  expect.assertions(2);
+  try {
+    await axios.post('/not_underage', {
+      dob: '22',
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Invalid type for param \'dob\'');
+  }
+});
+
+test('POST /not_underage FAIL 2', async () => {
+  expect.assertions(2);
+  try {
+    await axios.post('/not_underage', {
+      dob: 22,
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Invalid type for param \'dob\'');
+  }
+});
+
+test('POST /not_underage FAIL underage', async () => {
+  expect.assertions(2);
+  try {
+    await axios.post('/not_underage', {
+      dob: new Date(),
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Grow up first, kid');
   }
 });
 

@@ -33,12 +33,16 @@ export interface ValidateFunction {
   (val: any, req: Request): boolean|string|Promise<boolean|string>;
 };
 
+interface Constructor extends Function {
+  new(...args: any[]): any;
+}
+
 export interface Params {
   [key: string]: {
     'validate'?: ValidateFunction | Array<ValidateFunction>;
     'required'?: boolean;
     'requiredIf'?: RequiredIfQuery;
-    'type'?: Function /*| Params | [Function]*/;
+    'type'?: Constructor;
     'msg'?: string;
     'either'?: string|number;
     'nullable'?: boolean;
@@ -163,9 +167,17 @@ abstract class ReqParam {
       );
     }
 
-    if (
-      Object.prototype.toString.call(val) !== Object.prototype.toString.call(this.params[key].type!())
-    ) {
+    // If we get a date string in ISO format for a Date type, accept it
+    if (this.params[key].type === Date && !(val instanceof Date)) {
+      const d = new Date(val);
+
+      if (!isNaN(Number(d)) && d.toISOString() === val) {
+        _.set(this.source, key, d);
+        return HandlerReturnType.NONE;
+      }
+    }
+
+    if (toString.call(val) !== toString.call(new this.params[key].type!())) {
       // Value has wrong type
       this.error = this.params[key].msg || `Invalid type for param '${key}'`;
       return HandlerReturnType.ERROR;
