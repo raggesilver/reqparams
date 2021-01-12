@@ -27,14 +27,14 @@ export interface RequiredIfQuery {
   '$exists'?: string;
   // '$and': Array<RequiredIfQuery>;
   // '$or': Array<RequiredIfQuery>;
-};
+}
 
 export interface ValidateFunction {
   (val: any, req: Request): boolean|string|Promise<boolean|string>;
-};
+}
 
 interface Constructor extends Function {
-  new(...args: any[]): any;
+  new (...args: any[]): any;
 }
 
 export interface Params {
@@ -44,22 +44,23 @@ export interface Params {
     'requiredIf'?: RequiredIfQuery;
     'type'?: Constructor;
     'msg'?: string;
-    'either'?: string|number;
+    'either'?: string | number;
     'nullable'?: boolean;
   };
-};
+}
 
 interface IEither {
-  [key: string]: Array<string>;
-  [key: number]: Array<string>;
-};
+  [key: string]: string[];
+  [key: number]: string[];
+}
 
-export type OnErrorFunction = (req: Request, res: Response, next: NextFunction, message: string) => any;
+export type OnErrorFunction =
+  (req: Request, res: Response, next: NextFunction, message: string) => any;
 
 export interface ParamOptions {
   'strict'?: boolean;
   'onerror'?: OnErrorFunction;
-};
+}
 
 enum HandlerReturnType {
   NONE,
@@ -74,40 +75,39 @@ const defaultOnerror: OnErrorFunction = (_req, res, _next, message) => {
   });
 };
 
-type HandlerFunction = (...args: any[]) => HandlerReturnType|Promise<HandlerReturnType>;
+type HandlerFunction =
+  (...args: any[]) => HandlerReturnType | Promise<HandlerReturnType>;
 
 abstract class ReqParam {
   source: any;
   sourcePath: any;
-  // Reference so other functions can use it
   params: Params = {};
-  options: ParamOptions = <ParamOptions> {};
-
+  options: ParamOptions = {};
   error?: string;
 
-  abstract extractSource(req: Request): Object;
+  abstract extractSource (req: Request): any;
 
   /**
    * Check if the current key is part of an either group. If it is we make sure
    * the array in the local `either` object is initialized, then we push the
    * key to that either group's array.
    *
-   * @param either the local either object
    * @param key the current key we're validating
+   * @param either the local either object
    */
+  initEither (key: string, either: IEither) {
+    const eitherKey = this.params[key].either;
 
-  initEither(key: string, either: IEither): HandlerReturnType {
-    if (this.params[key].either) {
-      if (!(this.params[key].either! in either))
-        either[this.params[key].either!] = new Array<string>();
+    if (typeof eitherKey !== 'undefined') {
+      either[eitherKey] = either[eitherKey] ?? ([] as string[]);
       // Action is to just push the key to the either group, it will later
       // on be validated (all at once)
-      either[this.params[key].either!].push(key);
+      either[eitherKey].push(key);
     }
     return HandlerReturnType.NONE;
   }
 
-  existenceCheck(key: string): HandlerReturnType {
+  existenceCheck (key: string) {
     // Parameter `key` is present so do nothing
     if (_.exists(this.source, key)) {
       return HandlerReturnType.NONE;
@@ -138,20 +138,12 @@ abstract class ReqParam {
     }
   }
 
-  typeCheck(key: string): HandlerReturnType {
+  typeCheck (key: string) {
     // If type was specified
     const val = _.get(this.source, key);
 
-    // We accept `null` values for:
-    if (
-      val === null
-      && (
-        // non-required params that don't have `nullable` set to `false`
-        (this.params[key].required === false && this.params[key].nullable !== false)
-        // or for params that have `nullable` set to true
-        || (this.params[key].nullable === true)
-      )
-    ) {
+    // We accept `null` values for `nullable` keys:
+    if (val === null && this.params[key].nullable === true) {
       return HandlerReturnType.CONTINUE;
     }
 
@@ -186,7 +178,7 @@ abstract class ReqParam {
     return HandlerReturnType.NONE;
   }
 
-  async validate(key: string, req: Request): Promise<HandlerReturnType> {
+  async validate (key: string, req: Request) {
     // Array of validate functions
     let fns: ValidateFunction[] = [];
     if (this.params[key].validate instanceof Array) {
@@ -199,10 +191,12 @@ abstract class ReqParam {
     const val = _.get(this.source, key);
 
     // Run all at once
-    let validateResults: any = await Promise.all(fns.map(v => v(val, req)));
+    const validateResults: any = await Promise.all(fns.map(v => v(val, req)));
     // Check all the results, if any failed return
     for (const result of validateResults) {
-      if (result === true) continue;
+      if (result === true) {
+        continue;
+      }
 
       this.error = (
         (typeof result === 'string')
@@ -218,7 +212,7 @@ abstract class ReqParam {
     return HandlerReturnType.NONE;
   }
 
-  exec(params: Params): Handler {
+  exec (params: Params): Handler {
     this.params = params;
     return async (req, res, next) => {
       this.extractSource(req);
@@ -241,6 +235,7 @@ abstract class ReqParam {
           [key, req],
         ];
 
+        // TODO: is this variable necessary?
         let _continue = false;
 
         for (let i = 0; i < steps.length; i++) {
@@ -250,21 +245,30 @@ abstract class ReqParam {
             _continue = true; break;
           }
           if (r === HandlerReturnType.ERROR) {
-            return (this.options.onerror || defaultOnerror)(req, res, next, this.error!);
+            return (this.options.onerror || defaultOnerror)(
+              req, res, next, this.error!
+            );
           }
         }
 
-        if (_continue) continue;
+        if (_continue) {
+          continue;
+        }
       }
 
       // If all validation went well, check either groups
       for (const key in either) {
         // There must be at least one param of either in this.source, and if
         // there is we already know it's valid
-        const present = either[key].some((paramPath: string) => _.exists(this.source, paramPath));
+        const present = either[key].some(
+          (paramPath: string) => _.exists(this.source, paramPath)
+        );
         // If no param is present
         if (!present) {
-          return (this.options.onerror || defaultOnerror)(req, res, next, `At least one of ${either[key].join(', ')} must be present`);
+          return (this.options.onerror || defaultOnerror)(
+            req, res, next,
+            `At least one of ${either[key].join(', ')} must be present`
+          );
         }
       }
 
@@ -283,12 +287,12 @@ abstract class ReqParam {
       next();
     };
   }
-};
+}
 
 class ReqAll extends ReqParam {
   src: string;
 
-  constructor(src: string, options?: ParamOptions) {
+  constructor (src: string, options?: ParamOptions) {
     super();
 
     this.sourcePath = src;
@@ -296,7 +300,7 @@ class ReqAll extends ReqParam {
     this.options = options || <ParamOptions> {};
   }
 
-  extractSource(req: Request): Object {
+  extractSource (req: Request) {
     /* istanbul ignore next */
     if (!(this.src in req)) {
       throw new Error(`${this.source} key does not exist in express request`);
@@ -313,7 +317,9 @@ export const reqquery = (params: Params, options?: ParamOptions) => {
   return new ReqAll('query', options).exec(params);
 };
 
-export const reqall = (source: string, params: Params, options?: ParamOptions) => {
+export const reqall = (
+  source: string, params: Params, options?: ParamOptions
+) => {
   return new ReqAll(source, options).exec(params);
 };
 
@@ -337,12 +343,14 @@ export const validId: ValidateFunction = (val) => {
 };
 
 /* istanbul ignore next */
-export const unique = async (val: any, key: string, model: Model<any>): Promise<Boolean|String> => {
+export const unique = async (
+  val: any, key: string, model: Model<any>
+): Promise<boolean|string> => {
   try {
-    let u = await model.findOne({ [key]: val });
+    const u = await model.findOne({ [key]: val });
     return (u) ? `${key} already in use` : true;
   }
   catch {
     return false;
   }
-}
+};

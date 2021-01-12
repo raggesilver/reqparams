@@ -79,8 +79,8 @@ app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
 });
 
 const allowNull = reqparams({
-  name: { type: String, required: false }, // May be null
-  age: { type: Number, required: false, nullable: false, validate: v => v >= 18 },
+  name: { type: String, required: false, nullable: true }, // May be null
+  age: { type: Number, required: false, validate: v => v >= 18 },
 }, {
   strict: true,
 });
@@ -142,7 +142,7 @@ app.post('/either', eitherMid, (req, res) => {
 const newTodoMid = reqparams({
   todo: { type: Array, validate: notEmpty },
   name: { type: String, validate: notEmpty },
-  something: { required: false, validate: (v, r) => notEmpty(v, r) || 'Something wrong is not right', },
+  something: { required: false, validate: (v, r) => notEmpty(v, r) || 'Something wrong is not right' },
 });
 
 app.post('/todo', newTodoMid, (req, res) => {
@@ -171,7 +171,9 @@ const notUnderageMid = reqall('body', {
 });
 
 app.post('/not_underage', notUnderageMid, (req, res) => {
-  if (!(req.body.dob instanceof Date)) throw new Error('Dob is not a Date');
+  if (!(req.body.dob instanceof Date)) {
+    throw new Error('Dob is not a Date');
+  }
   return res.json(req.body);
 });
 
@@ -186,13 +188,13 @@ const handler = app.listen(port);
 //        ╭━╯┃
 //  ----- ╰━━╯ _________________________________________________________________
 
-const axios = require('axios').default;
+import axios from 'axios';
 
 axios.defaults.baseURL = `http://127.0.0.1:${port}`;
 
 test('POST /a { username: notEmpty } FAIL', async () => {
   try {
-    await axios.post(`/a`);
+    await axios.post('/a');
   }
   catch (e) {
     expect(e.response.status).toBe(400);
@@ -201,7 +203,7 @@ test('POST /a { username: notEmpty } FAIL', async () => {
 });
 
 test('POST /a { username: notEmpty } OK', async () => {
-  let { data } = await axios.post(`/a`, {
+  const { data } = await axios.post('/a', {
     username: 'aa',
   });
   expect(data).toMatchObject({});
@@ -209,7 +211,7 @@ test('POST /a { username: notEmpty } OK', async () => {
 
 test('POST /nest { username: notEmpty } FAIL', async () => {
   try {
-    await axios.post(`/nest`, {
+    await axios.post('/nest', {
       name: {
         first: 'Paulo',
       },
@@ -224,7 +226,7 @@ test('POST /nest { username: notEmpty } FAIL', async () => {
 });
 
 test('POST /nest { username: notEmpty } OK', async () => {
-  let { data } = await axios.post(`/nest`, {
+  const { data } = await axios.post('/nest', {
     name: {
       first: 'Paulo',
       last: 'Queiroz',
@@ -234,7 +236,7 @@ test('POST /nest { username: notEmpty } OK', async () => {
 });
 
 test('POST /strict { some.key: String } OK', async () => {
-  let { data } = await axios.post(`/strict`, {
+  const { data } = await axios.post('/strict', {
     some: {
       key: 'some value',
       removeMe: true,
@@ -255,7 +257,7 @@ test('POST /strict { some.key: String } FAIL', async () => {
   let error = undefined;
 
   try {
-    let { data: d } = await axios.post(`/strict`, {
+    const { data: d } = await axios.post('/strict', {
       some: {
         key: 13,
       },
@@ -275,7 +277,7 @@ test('POST /passreq { user: \'aaa\' }', async () => {
   expect.assertions(1);
   try {
     const user = 'aaa';
-    const { data } = await axios.post(`/passreq`, { user });
+    const { data } = await axios.post('/passreq', { user });
 
     expect(data?.user).toBe(`${user} -- I got more stuff`);
   }
@@ -434,7 +436,7 @@ test('POST /required_if2 OK', async () => {
 test('POST /required_if3 FAIL', async () => {
   expect.assertions(1);
   try {
-    const res = await axios.post('/required_if3', {
+    await axios.post('/required_if3', {
       user: {
         name: {
           first: 'Mr',
@@ -497,7 +499,7 @@ test('POST /todo FAIL', async () => {
   }
 });
 
-test('POST /todo FAIL', async () => {
+test('POST /todo FAIL 2', async () => {
   expect.assertions(1);
   try {
     await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: { 'willNotEmptyFail?': true }});
@@ -518,7 +520,7 @@ test('GET /todo/search OK', async () => {
   }
 });
 
-test('GET /todo/search OK', async () => {
+test('GET /todo/search OK 2', async () => {
   expect.assertions(1);
   try {
     const res = await axios.get('/todo/search', { params: { date: new Date }});

@@ -1,19 +1,65 @@
 image: node:14
 
-stages:
-  - build
-  - deploy
-
-cache:
+cache: &global_cache
+  key: ${CI_COMMIT_REF_SLUG}
   paths:
     - node_modules/
+    - dist/
+  # All jobs, by default, can only pull the cache
+  policy: pull
 
-jest:
-  stage: build
+stages:
+  - install
+  - test
+  - deploy
+
+install deps:
+  stage: install
+  before_script:
+    - ''
   script:
     - yarn install
-    - yarn run test
-  coverage: /All\sfiles.*?\s+(\d+.\d+)/
+  cache:
+    <<: *global_cache
+    policy: pull-push
+
+# Lint code with eslint
+lint:
+  stage: test
+  script:
+    - yarn lint
+
+build:
+  stage: test
+  script:
+    - yarn build
+  cache:
+    <<: *global_cache
+    policy: pull-push
+
+audit production:
+  stage: test
+  script:
+    - yarn audit
+  only:
+    - master
+    - demo
+
+audit:
+  stage: test
+  script:
+    - yarn audit
+  allow_failure: true
+  except:
+    - master
+    - demo
+
+# Run jest tests
+test:
+  stage: test
+  script:
+    - yarn test
+  coverage: /All\sfiles.*\s+(\d+(?:.\d+)?)/
   artifacts:
     reports:
       cobertura: coverage/cobertura-coverage.xml
@@ -21,8 +67,9 @@ jest:
 deploy:
   stage: deploy
   script:
-    - yarn run build
     - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
     - npm publish --access public
   only:
     - tags
+  except:
+    - branches
