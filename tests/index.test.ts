@@ -10,8 +10,8 @@
 
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
-import { randomBytes } from 'crypto';
 
+import { randomBytes } from 'crypto';
 import { reqparams, reqall, reqquery, validId, notEmpty } from '../src';
 
 const app = express();
@@ -175,6 +175,32 @@ app.post('/not_underage', notUnderageMid, (req, res) => {
     throw new Error('Dob is not a Date');
   }
   return res.json(req.body);
+});
+
+const aWeekDay = reqall('query', {
+  day: {
+    type: String,
+    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+  },
+});
+
+app.get('/my_daily_tasks', aWeekDay, (req, res) => {
+  return res.status(200).json(req.query);
+});
+
+const aWeekDay2 = reqall('query', {
+  day: {
+    type: String,
+    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    enumCmp: (a, b) => (
+      typeof a === 'string' && typeof b === 'string'
+      && a.toLowerCase() === b.toLowerCase()
+    ),
+  },
+});
+
+app.get('/my_daily_tasks2', aWeekDay2, (req, res) => {
+  return res.status(200).json(req.query);
 });
 
 const handler = app.listen(port);
@@ -596,6 +622,65 @@ test('POST /not_underage FAIL underage', async () => {
   catch (e) {
     expect(e.response?.status).toBe(400);
     expect(e.response?.data.error).toBe('Grow up first, kid');
+  }
+});
+
+test('GET /my_daily_tasks OK - testing enum', async () => {
+  const body = { day: 'Friday' };
+  const res = await axios.get('/my_daily_tasks', {
+    params: body,
+  });
+
+  expect(res.status).toBe(200);
+  expect(JSON.stringify(res.data)).toBe(JSON.stringify(body));
+});
+
+test('GET /my_daily_tasks FAIL - testing enum', async () => {
+  expect.assertions(2);
+  try {
+    await axios.get('/my_daily_tasks', {
+      params: { day: 'FRiday' },
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Invalid value for day');
+  }
+});
+
+test('GET /my_daily_tasks FAIL 2 - testing enum', async () => {
+  expect.assertions(2);
+  try {
+    await axios.get('/my_daily_tasks', {
+      params: { day: 'BANANA' },
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Invalid value for day');
+  }
+});
+
+test('GET /my_daily_tasks2 OK - testing enum', async () => {
+  const body = { day: 'fRIDAY' };
+  const res = await axios.get('/my_daily_tasks2', {
+    params: body,
+  });
+
+  expect(res.status).toBe(200);
+  expect(JSON.stringify(res.data)).toBe(JSON.stringify(body));
+});
+
+test('GET /my_daily_tasks2 FAIL - testing enum', async () => {
+  expect.assertions(2);
+  try {
+    await axios.get('/my_daily_tasks2', {
+      params: { day: 'BANANA' },
+    });
+  }
+  catch (e) {
+    expect(e.response?.status).toBe(400);
+    expect(e.response?.data.error).toBe('Invalid value for day');
   }
 });
 

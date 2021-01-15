@@ -30,7 +30,7 @@ export interface RequiredIfQuery {
 }
 
 export interface ValidateFunction {
-  (val: any, req: Request): boolean|string|Promise<boolean|string>;
+  (val: any, req: Request): boolean | string | Promise<boolean|string>;
 }
 
 interface Constructor extends Function {
@@ -39,13 +39,39 @@ interface Constructor extends Function {
 
 export interface Params {
   [key: string]: {
-    'validate'?: ValidateFunction | Array<ValidateFunction>;
+    /**
+     * A function (or array of) that receive the value present in the payload
+     * and returns whether or not that value is valid. It may also return a
+     * string which implies the value is invalid and the string will be used
+     * as the error message.
+     */
+    'validate'?: ValidateFunction | ValidateFunction[];
+    /**
+     * Whether or not the parameter is required (default `true`). Starting from
+     * v4.0.0 `required: false` no longer implies `nullable: true`.
+     */
     'required'?: boolean;
     'requiredIf'?: RequiredIfQuery;
+    /**
+     * A type constructor to check against the payload value (ie. Array, String,
+     * Number, Boolean...).
+     */
     'type'?: Constructor;
     'msg'?: string;
     'either'?: string | number;
+    /**
+     * Whether or not `null` is accepted.
+     */
     'nullable'?: boolean;
+    /**
+     * Only allow values contained in this array. This will be executed BEFORE
+     * the validate function.
+     */
+    'enum'?: Array<string|number|boolean|Date>;
+    /**
+     * A compare function to be used in the `enum` element comparison.
+     */
+    'enumCmp'?: (a: any, b: any) => boolean;
   };
 }
 
@@ -178,6 +204,24 @@ abstract class ReqParam {
     return HandlerReturnType.NONE;
   }
 
+  validateEnum (key: string) {
+    if (!this.params[key].enum) {
+      return HandlerReturnType.NONE;
+    }
+
+    const _enum = this.params[key].enum!;
+    const cmpFn = this.params[key].enumCmp ?? ((a, b) => a === b);
+    const val = _.get(this.source, key);
+
+    for (const v of _enum) {
+      if (cmpFn(v, val)) {
+        return HandlerReturnType.NONE;
+      }
+    }
+    this.error = `Invalid value for ${key}`;
+    return HandlerReturnType.ERROR;
+  }
+
   async validate (key: string, req: Request) {
     // Array of validate functions
     let fns: ValidateFunction[] = [];
@@ -221,6 +265,7 @@ abstract class ReqParam {
         this.initEither,
         this.existenceCheck,
         this.typeCheck,
+        this.validateEnum,
         this.validate,
       ];
 
@@ -230,6 +275,7 @@ abstract class ReqParam {
       for (const key in this.params) {
         const stepsArgs = [
           [key, either],
+          [key],
           [key],
           [key],
           [key, req],
