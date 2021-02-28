@@ -137,7 +137,7 @@ app.post('/either', eitherMid, (req, res) => {
 const newTodoMid = reqall('body', {
   todo: ParamBuilder.Array().notEmpty(),
   name: ParamBuilder.String().notEmpty(),
-  something: { required: false, validate: (v, r) => notEmpty(v, r) || 'Something wrong is not right' },
+  something: ParamBuilder.Object().notRequired().notEmpty(),
 });
 
 app.post('/todo', newTodoMid, (req, res) => {
@@ -507,13 +507,8 @@ test('POST /either FAIL', async () => {
 
 test('POST /todo OK', async () => {
   expect.assertions(1);
-  try {
-    const res = await axios.post('/todo', { todo: ['Chores', 'Buy stuff', 'Homework'], name: 'Today\'s tasks' });
-    expect(res.status).toBe(200);
-  }
-  catch (e) {
-    console.error(e.response?.data?.error || e);
-  }
+  const res = await axios.post('/todo', { todo: ['Chores', 'Buy stuff', 'Homework'], name: 'Today\'s tasks' });
+  expect(res.status).toBe(200);
 });
 
 test('POST /todo FAIL', async () => {
@@ -526,13 +521,19 @@ test('POST /todo FAIL', async () => {
   }
 });
 
+test('POST /todo OK 2', async () => {
+  expect.assertions(1);
+  const res = await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: { 'willNotEmptyFail?': false }});
+  expect(res.status).toBe(200);
+});
+
 test('POST /todo FAIL 2', async () => {
   expect.assertions(1);
   try {
-    await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: { 'willNotEmptyFail?': true }});
+    await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: {}});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Something wrong is not right');
+    expect(e.response?.data.error).toBe('Invalid parameter something');
   }
 });
 
