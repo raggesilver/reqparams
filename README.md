@@ -1,333 +1,129 @@
-# reqparams
+# REQPARAMS - v4
 
-Simple middleware to check and validate required fields in ExpressJs http
-requests.
+Reqparams is a library created to help validate Express requests. It allows you
+to check whether certain parameters exist, have the correct data type, and
+comply with whatever rules you set.
 
-**Summary**:
-- [Example](#example)
-- [Docs](#docs)
-- [Shipped validate functions](#shipped-validate-functions)
-- [FAQ](#faq)
+**Example scenario**
 
-## Example
+You hava a RESTful API that allows users to sign up. Your sign up end-point
+looks something like this:
 
 ```javascript
-const app = require('express')();
-const {
-  reqparams, // function to check POST requests (req.body)
-  reqquery, // function to check GET requests (req.query)
-  notEmpty, // validate function for strings and arrays
-} = require('@raggesilver/reqparams');
+const app = express();
 
-// Say you have a login route that requires the fields username and password,
-// reqparams can protect the route from requests that don't contain those fields
-//
-// First you setup the fields you need:
-let loginFields = {
-  username: {}, // For this example nothing else is needed
-  password: {},
-};
-// reqparams will check if the fields are present in the body, if not it will
-// respond with a 400 bad request with a body
-// {
-//   "error": "'username' field is required"
-// }
-//
-// To actualy use reqparams you must do the following:
-app.post('/login', reqparams(loginFields), (req, res) => {
+app.post('/signup', async (req, res) => {
+  const { email, password, firstName, lastName } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  if (typeof email !== 'string' || !email.test(MY_EMAIL_REGEX)) {
+    return res.status(400).json({ error: 'Please input a valid email' });
+  }
   // ...
-});
-
-// Now a more complicated example, a register route.
-const registerFields = {
-  username: {
-    // The function notEmpty checks if the param is a string (or array) and if
-    // it is not empty (for strings checks if they are not made only by
-    // whitespaces)
-    validate: notEmpty,
-    // Custom error message, leave `msg` empty for default message
-    // ("Field <name> is required")
-    msg: 'No username provided',
-  },
-  password: {
-    // Validate function for password tests for minimum complexity
-    validate: (val) => /^[\S\s]{6,}$/.test(val),
-  },
-  age: {
-    // Specify type, responds error (400) when type doesn't match
-    type: Number,
-    // Non-required fields don't prevent a request from comming in, but if the
-    // field is present and validate (also present) returns false the request
-    // will fail
-    required: false,
-    validate: (val) => val >= 18,
-  },
-  email: {
-    // Check if the email is already in use (you should do the same for
-    // the username, I was just lazy)
-    validate: async (val) => {
-      if (await User.findOne({ email: val }))
-        return 'Email in use';
-      // Further email regex verification
-      return true;
-    },
-  },
-};
-
-app.post('/register', reqparams(registerFields), (req, res) => {
-  // ...
+  // Same goes of all other fields your end-point needs
 });
 ```
 
-If you still want more examples check out [tests/index.test.js](https://gitlab.com/raggesilver-npm/reqparams/tree/master/tests/index.test.js).
+This get's incredibly messy and repetitive.
 
-## Docs
-
-### Keys
-
-Keys are the path of the field that must be present in the request. Using keys
-you can easily validate root level and also nested fields. E.g.:
+With reqparams you can easily validate all required fields.
 
 ```javascript
-{
-  // This will search for req.[body/query].email
-  'email': {},
-  // This will search for req.[body/query].name.first
-  'name.first': {},
-}
+const app = express();
+const { reqall, ParamBuilder } = require('@raggesilver/reqparams');
+
+const signUpRequirements = reqall('body', {
+  email: ParamBuilder.String().match(MY_EMAIL_REGEX),
+  password: ParamBuilder.String().min(6).max(12),
+  firstName: ParamBuilder.String().notEmpty(),
+  lastName: ParamBuilder.String().notEmpty(),
+  // Ensures `email` exists, is a string, and matches your RegExp
+  // Ensures `password` exists, is a string with at least 6 characters and at
+  // most 12
+  // Ensures `firstName` exists and is a not empty string
+  // Ensures `lastName` exists and is a not empty string
+});
+
+// Pass your requirements as a middleware for your signup route
+//
+//                  vvvvvvvvvvvvvvvvvv
+app.post('/signup', signUpRequirements, async (req, res) => {
+  // If the request made it this far it means that all the required data is
+  // present and valid.
+  const { email, password, firstName, lastName } = req.body;
+});
 ```
 
-Keys in the object passed to `reqparams` or `reqquery` must be present in the
-request (unless `required: false` is specified). Apart from being present it is
-also possible to validate the values passed in. For that the key values must be
-an object and may contain the following:
+## Documentation
 
-#### validate
+From the `@raggesilver/reqparams` component you can import:
 
-Validate functions are the core of `reqparams`, they allow you to test whether a
-field is valid outside your route, which can make your code way cleaner.
+- [reqall()](#reqall) - a function that returns the Middleware that'll validate
+all of your end-point's required fields.
+- [ParamBuilder](#parambuilder) - the class that allows you to create your
+required parameter's validation rules.
 
-- Validate functions **may** be `async`.
-- If they return anything but `true` the request will fail (400)
-- If they return a string, they will fail and use the string as the error
-message
+> Autocompletion may show you more things to import, but their use is
+> discouraged as they will be deprecated in v5.
 
-As of `2.1.0` validate may be a single function on an array of functions (if you
-pass an array of functions they will be executed in parallel with `Promise.all`)
-. These functions should be prototyped:
+### `reqall()`
+
+Reqall is the base function for reqparams, it will return the Middleware
+function that will validate the required data for one or more end-points.
+
+Here's what the function expects as parameters:
 
 ```typescript
-(val: any, req: express.Request): Boolean|String|Promise<Boolean|String>
+function reqall (
+  source: keyof express.Request,
+  params: Params,
+  options?: ParamOptions, // optional
+);
 ```
 
-#### either
+Let's break that down:
 
-Either was introduced in `2.0.0`, it allows you to say that only one of many
-fields are required, still if the validate function for any of them fail the
-request will be refused.
+1. `source`: a `string`. It's value must be something that exists in the express
+request object. It's usual values are: `body` (for POST requests), `query` (for
+GET requests) and `params` (for dynamic express routes such as `/post/:id`).
+2. `params`: an `object`. This object will contain your required fields and
+should be created with the aid of [ParamBuilder](#parambuilder). An important
+note about `params` is that you can expect objects with nested fields. To
+validate those `reqparams` uses a dot notation similar to
+[MongoDB's](https://docs.mongodb.com/v4.4/core/document/#dot-notation).
 
-If your login function needs a password and either username or email you could
-use reqparams like this:
-```javascript
-let loginFields: {
-  password: { /* whatever */ },
-  username: { either: 1, },
-  email: { either: 1, },
-}
-```
-
-The either key is an identifier that groups the different fields (it can be a
-`number`, `string` or `symbol`, basically what you use as an object key).
-
-If neither `username` nor `email` are present the request will be refused with:
-```javascript
-// 404
-{
-  "error": "One of 'username', 'email' is required"
-}
-```
-
-#### nullable
-
-Nullable was introduced in 3.2.0 and it's purpose is to state that a non-required
-parameter can't be `null` -- it has to either be of the given `type` or not
-present in the body.
-
-> As of 3.2.0 any param with `required: false` accepts `null` as a valid value
-
-> As of 3.3.0 you may use `nullable: true` to indicate that a required parameter
-> can also be `null`
-
-#### requiredIf
-
-requiredIf was introcued in 3.3.0, it allows you to say that a parameter is
-only required if a certain condition is met. For now only one condition may
-be used: `$exists`.
-
-It works like this:
+Usage example:
 
 ```javascript
-const registerMid = reqparams({
-  'email': { type: String, validate: notEmpty },
-  'password': { type: String, validate: v => passwordRegex.test(v) },
+const app = express();
+const { reqall, ParamBuilder } = require('@raggesilver/reqparams');
 
-  'address.line1': { type: String, requiredIf: { $exists: 'address' }},
-  'address.line2': { type: String, requiredIf: { $exists: 'address' }},
-  'address.city': { type: String, requiredIf: { $exists: 'address' }},
-  'address.state': { type: String, requiredIf: { $exists: 'address' }},
-  'address.zip': { type: String, requiredIf: { $exists: 'address' }},
-});
-```
-
-This example makes `address.line1`, `address.line2`, ..., only be required if
-a parent node `address` is present -- which means that this request can succeed
-with both of these request bodies:
-
-```json
-{
-  "email": "john@mail.com",
-  "password": "sEcUrE123!"
-}
-```
-
-```json
-{
-  "email": "john@mail.com",
-  "password": "sEcUrE123!",
-  "address": {
-    "line1": "600 Here St",
-    "line2": "",
-    "city": "Scranton",
-    "state": "NY",
-    "zip": "12345"
-  }
-}
-```
-
-But not with this one:
-
-```json
-{
-  "email": "john@mail.com",
-  "password": "sEcUrE123!",
-  "address": {
-    "blah": "blah blah"
-  }
-}
-```
-
-Because in the last one `address` exists and it does not contain `line1`, `line2`
-...
-
-**Important note:** `requiredIf` will overwrite other existence conditionals
-like `either` and `required`.
-
-#### all the rest
-
-All the other keys supported are easy to understand from the
-[Example](#example).
-
-### Options
-
-> Since 3.0.0
-
-When calling any of the validators (reqparams, reqquery, ...) you may also pass
-a second object. That object will contain options on how the validator behaves.
-
-These are the available options: `strict` and `onerror`.
-
-#### `strict`: boolean
-
-The strict parameter will make you request object have only the keys you
-specified in [keys](#keys). Reqparams achieves this by creating a new object
-and only setting the values of keys that exist in [keys](#keys).
-
-#### `onerror`: Function
-
-The onerror function will be called (if present) instead of the default error
-handler. This function receives the express request, express response, express
-next function and Reqparam's error message.
-
-Example:
-
-```javascript
-let mid = reqparams({
-  'email': { type: String, validate: notEmpty },
+const myEndPointsRequirements = reqall('<source here>', {
+  'requiredField': ParamBuilder.String().notEmpty(),
+  'my.nested.field': ParamBuilder.Number({ integer: true }).min(18),
 });
 
-router.post('/login', mid, (req, res) => { /* ... */ });
-// If this route receives a call with the following body:
-//
-// { 'username': 'potato' }
-//
-// The default error handler will respond with:
-//
-// (400) { error: 'Param \'email\' missing' }
+/**
+ * Your endpoint expects a payload like this:
+ * {
+ *   requiredField: 'a not empty string',
+ *   my: {
+ *     nested: {
+ *       field: 19,
+ *     },
+ *   },
+ * }
+ */
 
-let mid2 = reqparams({
-  'email': { type: String, validate: notEmpty },
-}, {
-  onerror: (_req, res, _next, message) => {
-    return res.status(401).json({
-      error: message,
-      error_code: 'INVALID_INPUT',
-    });
-  },
-});
-
-router.post('/login2', mid2, (req, res) => { /* ... */ });
-// If this route receives a call with the following body:
-//
-// { 'username': 'potato' }
-//
-// The given error handler will be called and respond with:
-//
-// (401) { error: 'Param \'email\' missing', error_code: 'INVALID_INPUT' }
+app.post('/my-endpoint', myEndPointsRequirements, (req, res) => { /* ... */ });
 ```
 
----
+### `ParamBuilder`
 
-## Shipped validate functions
+> TODO: Complete docs for ParamBuilder
 
-This package also has it's own validate functions.
+> TODO: Docs for ParamOptions
 
-### `notEmpty`
-
-`notEmpty` takes either a string or an array and checks if:
-
-- The string is not (empty or all whitespace)
-- The array has at least one element
-
-Any other type will fail (`return false`).
-
-### `unique`
-
-`unique` is a validate function **helper**. It can be used to easily check if
-a field is unique to a specific `mongoose Model`.
-
-**Example**
-
-```javascript
-  // ...
-  email: {
-    validate: async (val) => await unique(val, 'email', UserModel),
-  }
-```
-
-This will run a `model.findOne({ [key]: val })`, and return `true` if none is
-found. The call is made inside a `try/catch` block and returns `false` if any
-error is thrown.
-
-### `validId`
-
-`validId` checks if a given value is a valid Mongoose ObjectId.
-
-## FAQ
-
-> What if I need two middleware functions in the same route?
-```javascript
-// guard being the first and reqparams being second (order matters)
-app.post('/profile/update', [ guard, reqparams({}) ], (req, res) => {
-  // ...
-});
-```
+> TODO: Docs for the error API
