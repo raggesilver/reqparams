@@ -21,6 +21,7 @@
 
 import { Request, Response, NextFunction, Handler } from 'express';
 import { Model } from 'mongoose';
+
 import * as _ from '@raggesilver/hidash';
 
 export interface RequiredIfQuery {
@@ -37,42 +38,44 @@ interface Constructor extends Function {
   new (...args: any[]): any;
 }
 
+export interface Param {
+  /**
+   * A function (or array of) that receive the value present in the payload
+   * and returns whether or not that value is valid. It may also return a
+   * string which implies the value is invalid and the string will be used
+   * as the error message.
+   */
+  'validate'?: ValidateFunction | ValidateFunction[];
+  /**
+   * Whether or not the parameter is required (default `true`). Starting from
+   * v4.0.0 `required: false` no longer implies `nullable: true`.
+   */
+  'required'?: boolean;
+  'requiredIf'?: RequiredIfQuery;
+  /**
+   * A type constructor to check against the payload value (ie. Array, String,
+   * Number, Boolean...).
+   */
+  'type'?: Constructor;
+  'msg'?: string;
+  'either'?: string | number;
+  /**
+   * Whether or not `null` is accepted.
+   */
+  'nullable'?: boolean;
+  /**
+   * Only allow values contained in this array. This will be executed BEFORE
+   * the validate function.
+   */
+  'enum'?: Array<string|number|boolean|Date>;
+  /**
+   * A compare function to be used in the `enum` element comparison.
+   */
+  'enumCmp'?: (a: any, b: any) => boolean;
+}
+
 export interface Params {
-  [key: string]: {
-    /**
-     * A function (or array of) that receive the value present in the payload
-     * and returns whether or not that value is valid. It may also return a
-     * string which implies the value is invalid and the string will be used
-     * as the error message.
-     */
-    'validate'?: ValidateFunction | ValidateFunction[];
-    /**
-     * Whether or not the parameter is required (default `true`). Starting from
-     * v4.0.0 `required: false` no longer implies `nullable: true`.
-     */
-    'required'?: boolean;
-    'requiredIf'?: RequiredIfQuery;
-    /**
-     * A type constructor to check against the payload value (ie. Array, String,
-     * Number, Boolean...).
-     */
-    'type'?: Constructor;
-    'msg'?: string;
-    'either'?: string | number;
-    /**
-     * Whether or not `null` is accepted.
-     */
-    'nullable'?: boolean;
-    /**
-     * Only allow values contained in this array. This will be executed BEFORE
-     * the validate function.
-     */
-    'enum'?: Array<string|number|boolean|Date>;
-    /**
-     * A compare function to be used in the `enum` element comparison.
-     */
-    'enumCmp'?: (a: any, b: any) => boolean;
-  };
+  [key: string]: Param;
 }
 
 interface IEither {
@@ -235,7 +238,7 @@ abstract class ReqParam {
     const val = _.get(this.source, key);
 
     // Run all at once
-    const validateResults: any = await Promise.all(fns.map(v => v(val, req)));
+    const validateResults = await Promise.all(fns.map(v => v(val, req)));
     // Check all the results, if any failed return
     for (const result of validateResults) {
       if (result === true) {
@@ -355,21 +358,23 @@ class ReqAll extends ReqParam {
   }
 }
 
-export const reqparams = (params: Params, options?: ParamOptions) => {
-  return new ReqAll('body', options).exec(params);
-};
-
-export const reqquery = (params: Params, options?: ParamOptions) => {
-  return new ReqAll('query', options).exec(params);
-};
-
 export const reqall = (
-  source: string, params: Params, options?: ParamOptions
+  source: keyof Request, params: Params, options?: ParamOptions
 ) => {
   return new ReqAll(source, options).exec(params);
 };
 
-export const notEmpty: ValidateFunction = (val) => {
+// Validate functions ==========================================================
+
+/**
+ * Check that an array has at least one element or that a string isn't empty/all
+ * white space or that an object has at least one key.
+ *
+ * @param val
+ */
+export const notEmpty: ValidateFunction = (
+  val: string|any[]|Record<string, any>
+) => {
   switch (typeof val) {
     case 'string':
       return (!/^\s*$/.test(val));
@@ -377,26 +382,243 @@ export const notEmpty: ValidateFunction = (val) => {
       if (val instanceof Array) {
         return (val.length !== 0);
       }
+      else if (val) {
+        return Object.keys(val).length > 0;
+      }
   }
   return false;
 };
 
-export const validId: ValidateFunction = (val) => {
+/**
+ * Check that a string is a valid Mongoose/MongoDB id, that is, it's a lowercase
+ * hex string with either 12 or 24 characters.
+ *
+ * @param val
+ */
+export const validId: ValidateFunction = (val: string) => {
   return (
     typeof val === 'string'
     && /^([a-f0-9]{12}|[a-f0-9]{24})$/.test(val)
   );
 };
 
+/**
+ * Check that a value isn't in use in your databse for a specific Mongoose key
+ * and Model. Note that this function is a helper function, not a validate
+ * function.
+ *
+ * @param val
+ * @param key the Mongoose key to check for uniqueness
+ * @param model hte Mongoose model
+ *
+ * @example
+ *
+ * const register = reqall('body', {
+ *   email: { type: String, validate: unique(User, 'email') },
+ * });
+ */
 /* istanbul ignore next */
-export const unique = async (
-  val: any, key: string, model: Model<any>
-): Promise<boolean|string> => {
-  try {
-    const u = await model.findOne({ [key]: val });
-    return (u) ? `${key} already in use` : true;
+export const unique = (model: Model<any>, key: string) =>
+  <ValidateFunction> async function (val: any) {
+    try {
+      const doc = await model.findOne({ [key]: val });
+      return doc ? `${key} already in use` : true;
+    }
+    catch {
+      return false;
+    }
+  };
+
+// Joi equivalent for reqparams ================================================
+
+export class ParamBuilder implements Param {
+  either?: Param['either'];
+  enum?: Param['enum'];
+  enumCmp?: Param['enumCmp'];
+  nullable: Param['nullable'];
+  required = true;
+  type: Param['type'];
+  validate: ValidateFunction[] = [];
+
+  private _isObjectId = false;
+  // private _isInteger = false;
+
+  private constructor (type: Param['type']) {
+    this.type = type;
   }
-  catch {
-    return false;
+
+  static Array () {
+    return new ParamBuilder(Array);
   }
-};
+
+  static Boolean () {
+    return new ParamBuilder(Boolean);
+  }
+
+  static Date () {
+    return new ParamBuilder(Date);
+  }
+
+  static Object () {
+    return new ParamBuilder(Object);
+  }
+
+  static String () {
+    return new ParamBuilder(String);
+  }
+
+  static Number ({ integer = false } = {}) {
+    const inst = new ParamBuilder(Number);
+    // inst._isInteger = integer;
+    if (integer) {
+      inst.validate.push(v => Number.isInteger(v));
+    }
+
+    return inst;
+  }
+
+  static ObjectId () {
+    const inst = new ParamBuilder(String);
+    inst.validate.push(validId);
+    inst._isObjectId = true;
+
+    return inst;
+  }
+
+  /**
+   * For Numbers and Dates, this sets the minimum valid value. For Arrays and
+   * Strings this sets the minimum required length.
+   *
+   * All comparisons are inclusive.
+   */
+  min (n: number) {
+    if (this.type === String || this.type === Array) {
+      this.validate.push((v: string|any[]) => v.length >= n);
+    }
+    else if (this.type === Number || this.type === Date) {
+      this.validate.push((v: number|Date) => v >= n);
+    }
+    else {
+      throw new Error(
+        '.min() can only be used with strings, arrays, numbers and dates'
+      );
+    }
+    return this;
+  }
+
+  /**
+   * For Numbers and Dates, this sets the maximum valid value. For Arrays and
+   * Strings this sets the maximum allowed length.
+   *
+   * All comparisons are inclusive.
+   */
+  max (n: number) {
+    if (this.type === String || this.type === Array) {
+      this.validate.push((v: string|any[]) => v.length <= n);
+    }
+    else if (this.type === Number || this.type === Date) {
+      this.validate.push((v: number|Date) => v <= n);
+    }
+    else {
+      throw new Error(
+        '.max() can only be used with strings, arrays, numbers and dates'
+      );
+    }
+    return this;
+  }
+
+  /**
+   * Ensure an object has at least one key or an array has at least one element
+   * or that a string has at least one non white space character.
+   */
+  notEmpty () {
+    if (this.type !== String && this.type !== Array && this.type !== Object) {
+      throw new Error(
+        '.notEmpty() can only be used with strings, objects, and arrays'
+      );
+    }
+    this.validate.push(notEmpty);
+    return this;
+  }
+
+  /**
+   * Check whether or not the given value doesn't already exist in a databse for
+   * a specific model.
+   *
+   * @param key the mongoose key to check for uniqueness
+   * @param model the mongoose model to perform the check
+   */
+  unique (key: string, model: Model<any>) {
+    if (!this._isObjectId) {
+      throw new Error('.unique() can only be used with ObjectIds');
+    }
+    this.validate.push(unique(model, key));
+    return this;
+  }
+
+  /**
+   * Set whether or not the current param is required (true by default).
+   */
+  setRequired (r: boolean) {
+    this.required = r;
+    return this;
+  }
+
+  /**
+   * Set the current parameter as not required (params are required by default).
+   */
+  notRequired () {
+    return this.setRequired(false);
+  }
+
+  /**
+   * Whether or not to accept `null` as a valid value (false by default).
+   */
+  setNullable (n: boolean) {
+    this.nullable = n;
+    return this;
+  }
+
+  /**
+   * Set a list of all allowed values. Anything not on this list will be
+   * rejected.
+   */
+  setEnum (values: Param['enum']) {
+    this.enum = values;
+    return this;
+  }
+
+  /**
+   * Set a custom compare function for you enum. Particularly useful for
+   * comparing objects and custom data.
+   */
+  setEnumCmp (enumCmp: Param['enumCmp']) {
+    this.enumCmp = enumCmp;
+    return this;
+  }
+
+  /**
+   * Give this parameter a group in which only one param is required. Usefull
+   * for login routes where the user is only required to input either a phone
+   * or a username.
+   */
+  setEither (either: Param['either']) {
+    this.either = either;
+    return this;
+  }
+
+  /**
+   * Append validation functions to the current parameter. Note that functions
+   * added by ParamBuilder will still be present.
+   *
+   * @param validate A validation function (or array of validation functions)
+   */
+  setValidate (validate: ValidateFunction | ValidateFunction[]) {
+    if (!(validate instanceof Array)) {
+      validate = [ validate ];
+    }
+
+    this.validate.push(...validate);
+    return this;
+  }
+}

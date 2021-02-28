@@ -12,7 +12,8 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 
 import { randomBytes } from 'crypto';
-import { reqparams, reqall, reqquery, validId, notEmpty } from '../src';
+
+import { reqall, notEmpty, ParamBuilder } from '../src';
 
 const app = express();
 const port = Number(process.env.PORT) || 9143;
@@ -20,7 +21,7 @@ const port = Number(process.env.PORT) || 9143;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-const postAMid = reqparams({
+const postAMid = reqall('body', {
   username: { validate: notEmpty },
 });
 
@@ -28,7 +29,7 @@ app.post('/a', postAMid, (_req, res) => {
   return res.json({});
 });
 
-const postNest = reqparams({
+const postNest = reqall('body', {
   'name.first': {},
   'name.last': {},
 });
@@ -38,7 +39,7 @@ app.post('/nest', postNest, (_req, res) => {
 });
 
 const strictMid = reqall('body', {
-  'some.key': { type: String },
+  'some.key': ParamBuilder.String(),
 }, {
   strict: true,
   onerror: (_req, res, _next, message) => {
@@ -51,24 +52,18 @@ const strictMid = reqall('body', {
 
 app.post('/strict', strictMid, (req, res) => res.json(req.body));
 
-const passReqMid = reqparams({
-  user: {
-    type: String,
-    validate: [
-      notEmpty,
-      (val, req) => {
-        req.body.user = `${val} -- I got more stuff`;
-        return (true);
-      },
-    ],
-  },
+const passReqMid = reqall('body', {
+  'user': ParamBuilder.String().notEmpty().setValidate((v, req) => {
+    req.body.user = `${v} -- I got more stuff`;
+    return true;
+  }),
 });
 
 app.post('/passreq', passReqMid, (req, res) => res.status(200).json(req.body));
 
 const resourceByIdMid = reqall(
   'params',
-  { id: { type: String, validate: validId }}
+  { id: ParamBuilder.ObjectId() }
 );
 
 app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
@@ -78,9 +73,9 @@ app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
   });
 });
 
-const allowNull = reqparams({
-  name: { type: String, required: false, nullable: true }, // May be null
-  age: { type: Number, required: false, validate: v => v >= 18 },
+const allowNull = reqall('body', {
+  name: ParamBuilder.String().notRequired().setNullable(true), // May be null
+  age: ParamBuilder.Number({ integer: true }).notRequired().min(18),
 }, {
   strict: true,
 });
@@ -89,8 +84,8 @@ app.post('/allow_null', allowNull, (req, res) => {
   return res.json(req.body);
 });
 
-const requiredAndNullable = reqparams({
-  name: { type: String, nullable: true }, // May be null
+const requiredAndNullable = reqall('body', {
+  name: ParamBuilder.String().setNullable(true), // May be null
 }, {
   strict: true,
 });
@@ -99,7 +94,7 @@ app.post('/required_and_nullable', requiredAndNullable, (req, res) => {
   return res.json(req.body);
 });
 
-const requiredIf = reqparams({
+const requiredIf = reqall('body', {
   'name.first': { requiredIf: { $exists: 'name' }},
   'name.last': { requiredIf: { $exists: 'name' }},
 });
@@ -108,7 +103,7 @@ app.post('/required_if', requiredIf, (req, res) => {
   return res.json(req.body);
 });
 
-const requiredIf2 = reqparams({
+const requiredIf2 = reqall('body', {
   'user.name.first': { requiredIf: { $exists: 'user.name' }},
   'user.name.last': { requiredIf: { $exists: 'user.name' }},
   'user.address.line1': { requiredIf: { $exists: 'user' }},
@@ -118,30 +113,30 @@ app.post('/required_if2', requiredIf2, (req, res) => {
   return res.json(req.body);
 });
 
-const requiredIf3 = reqparams({
-  'user.name.first': { type: String },
-  'user.name.last': { type: String },
-  'user.partner.name.first': { type: String, validate: notEmpty, requiredIf: { $exists: 'user.partner' }},
-  'user.partner.name.last': { type: String, validate: notEmpty, requiredIf: { $exists: 'user.partner' }},
+const requiredIf3 = reqall('body', {
+  'user.name.first': ParamBuilder.String(),
+  'user.name.last': ParamBuilder.String(),
+  'user.partner.name.first': { ...ParamBuilder.String().notEmpty(), requiredIf: { $exists: 'user.partner' }},
+  'user.partner.name.last': { ...ParamBuilder.String().notEmpty(), requiredIf: { $exists: 'user.partner' }},
 });
 
 app.post('/required_if3', requiredIf3, (req, res) => {
   return res.json(req.body);
 });
 
-const eitherMid = reqparams({
-  email: { type: String, either: 1 },
-  phone: { type: String, either: 1},
-  password: { type: String },
+const eitherMid = reqall('body', {
+  email: ParamBuilder.String().setEither(1),
+  phone: ParamBuilder.String().setEither(1),
+  password: ParamBuilder.String(),
 });
 
 app.post('/either', eitherMid, (req, res) => {
   return res.json(req.body);
 });
 
-const newTodoMid = reqparams({
-  todo: { type: Array, validate: notEmpty },
-  name: { type: String, validate: notEmpty },
+const newTodoMid = reqall('body', {
+  todo: ParamBuilder.Array().notEmpty(),
+  name: ParamBuilder.String().notEmpty(),
   something: { required: false, validate: (v, r) => notEmpty(v, r) || 'Something wrong is not right' },
 });
 
@@ -149,9 +144,9 @@ app.post('/todo', newTodoMid, (req, res) => {
   return res.json(req.body);
 });
 
-const findTodoMid = reqquery({
-  author: { type: String, either: 1 },
-  date: { type: Date, either: 1 },
+const findTodoMid = reqall('query', {
+  author: ParamBuilder.String().setEither(1),
+  date: ParamBuilder.Date().setEither(1),
 });
 
 app.get('/todo/search', findTodoMid, (req, res) => {
@@ -178,10 +173,9 @@ app.post('/not_underage', notUnderageMid, (req, res) => {
 });
 
 const aWeekDay = reqall('query', {
-  day: {
-    type: String,
-    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-  },
+  day: ParamBuilder.String().setEnum(
+    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+  ),
 });
 
 app.get('/my_daily_tasks', aWeekDay, (req, res) => {
@@ -203,6 +197,13 @@ app.get('/my_daily_tasks2', aWeekDay2, (req, res) => {
   return res.status(200).json(req.query);
 });
 
+const minMaxMid = reqall('body', {
+  age: ParamBuilder.Number({ integer: true }).min(18).max(24),
+  username: ParamBuilder.String().min(8).max(12),
+});
+
+app.post('/min-max', minMaxMid, (_, res) => res.status(200).json({}));
+
 const handler = app.listen(port);
 
 // ╭━━╮            ╭╮      ╭╮
@@ -214,7 +215,7 @@ const handler = app.listen(port);
 //        ╭━╯┃
 //  ----- ╰━━╯ _________________________________________________________________
 
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 axios.defaults.baseURL = `http://127.0.0.1:${port}`;
 
@@ -682,6 +683,58 @@ test('GET /my_daily_tasks2 FAIL - testing enum', async () => {
     expect(e.response?.status).toBe(400);
     expect(e.response?.data.error).toBe('Invalid value for day');
   }
+});
+
+test('POST /min-max OK', async () => {
+  expect.assertions(2);
+
+  const res = await axios.post('/min-max', {
+    age: 18,
+    username: 'la potato',
+  });
+
+  expect(res.status).toBe(200);
+  expect(res.data).toEqual({});
+});
+
+test('POST /min-max FAIL', async () => {
+  expect.assertions(8);
+
+  await axios.post('/min-max', {
+    age: 17,
+    username: 'la potato',
+  })
+    .catch((e: AxiosError) => {
+      expect(e.response?.status).toBe(400);
+      expect(e.response?.data.error).toBe('Invalid parameter age');
+    });
+
+  await axios.post('/min-max', {
+    age: 25,
+    username: 'la potato',
+  })
+    .catch((e: AxiosError) => {
+      expect(e.response?.status).toBe(400);
+      expect(e.response?.data.error).toBe('Invalid parameter age');
+    });
+
+  await axios.post('/min-max', {
+    age: 24,
+    username: 'la po',
+  })
+    .catch((e: AxiosError) => {
+      expect(e.response?.status).toBe(400);
+      expect(e.response?.data.error).toBe('Invalid parameter username');
+    });
+
+  await axios.post('/min-max', {
+    age: 24,
+    username: 'la potato land of the beets',
+  })
+    .catch((e: AxiosError) => {
+      expect(e.response?.status).toBe(400);
+      expect(e.response?.data.error).toBe('Invalid parameter username');
+    });
 });
 
 // Close listener after testing
