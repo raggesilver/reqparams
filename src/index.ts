@@ -22,7 +22,11 @@
 import { Request, Response, NextFunction, Handler } from 'express';
 import { Model } from 'mongoose';
 
+import _defaults from './defaults';
+
 import * as _ from '@raggesilver/hidash';
+
+export const defaults = _defaults;
 
 export interface RequiredIfQuery {
   '$exists'?: string;
@@ -57,6 +61,10 @@ export interface Param {
    * Number, Boolean...).
    */
   'type'?: Constructor;
+  /**
+   * @deprecated `msg` is deprecated since v4.0.0 and will be removed on v5.0.0.
+   * Use the new error API instead.
+  */
   'msg'?: string;
   'either'?: string | number;
   /**
@@ -72,13 +80,14 @@ export interface Param {
    * A compare function to be used in the `enum` element comparison.
    */
   'enumCmp'?: (a: any, b: any) => boolean;
+  'name'?: string;
 }
 
 export interface Params {
   [key: string]: Param;
 }
 
-interface IEither {
+export interface IEither {
   [key: string]: string[];
   [key: number]: string[];
 }
@@ -98,11 +107,106 @@ enum HandlerReturnType {
   ERROR,
 }
 
-const defaultOnerror: OnErrorFunction = (_req, res, _next, message) => {
-  return res.status(400).json({
-    error: message,
-  });
-};
+export enum ErrorType {
+  /**
+   * The param doesn't have the expected data type.
+   *
+   * **THIS IS A PROGRAMMER ERROR**
+   */
+  INVALID_PARAM_TYPE,
+  /**
+   * A required param was not sent in the payload.
+   */
+  MISSING_REQUIRED_PARAM,
+  /**
+   * One of the validation functions failed, which means the parameter was sent
+   * but it is invalid.
+   */
+  VALIDATION_ERROR,
+}
+
+export enum ESpecificError {
+  INTEGER = 'integer',
+  MAX = 'max',
+  MIN = 'min',
+  NOT_EMPTY = 'notEmpty',
+  NOT_IN_ENUM = 'notInEnum',
+  UNIQUE = 'unique',
+  REQUIRED_IF_EXISTS = 'requiredIfExists',
+  VALID_ID = 'validId',
+}
+
+type SpecificError = ESpecificError|string;
+
+// FIXME: add comments for this class
+export class ValidationError extends Error {
+  specificError?: SpecificError;
+  extraData?: Record<string, any>;
+
+  constructor (specificError?: SpecificError, extraData?: Record<string, any>) {
+    super();
+
+    this.specificError = specificError;
+    this.extraData = extraData;
+  }
+}
+
+/**
+ * During the param validation lifecycle any step may throw a ParamError
+ * indicating that because of a specific parameter the current payload is
+ * invalid.
+ *
+ * FIXME: update the next section of this comment to account for ValidationError
+ *
+ * Users may use this to integrate well with reqparams when they create custom
+ * validate functions.
+ */
+export class ParamError extends ValidationError {
+  name = 'ParamError';
+  type: ErrorType;
+  paramPath: string;
+  param: Param;
+
+  /**
+   * @param type The error type.
+   * @param paramPath The parameter path (e.g.: 'user.name.first').
+   * @param msg (optional) An error message. If this is set, this message will
+   * be sent to the user, otherwise the default errorMessageComposer function
+   * will be used to create a message based on the error type.
+   * @param specificError Validate functions may want to communicate what
+   * specific error occurred as opposed to just setting the error type. Setting
+   * this parameter may alter the output of errorMessageComposer. The naming
+   * convention used for specific errors is to use the validate function name.
+   * That is, if this error was thrown in the `notEmpty` validate function, the
+   * `specificError` will be `notEmpty`.
+   * @param extraData Extra data on the specific error.
+   */
+  constructor (
+    type: ErrorType, paramPath: string, param: Param,
+    msg?: string,
+    specificError?: SpecificError,
+    extraData?: Record<string, any>,
+  ) {
+    super(specificError, extraData);
+
+    this.message = msg || '';
+    this.type = type;
+    this.param = param;
+    this.paramPath = paramPath;
+  }
+
+  toString (): string {
+    return (this.message !== '')
+      ? this.message
+      : defaults.transformers.paramError.toString(this);
+  }
+}
+
+// const defaultOnerror: OnErrorFunction = (_req, res, _next, message) => {
+//   return res.status(400).json({
+//     error: message,
+//   });
+// };
 
 type HandlerFunction =
   (...args: any[]) => HandlerReturnType | Promise<HandlerReturnType>;
@@ -149,10 +253,13 @@ abstract class ReqParam {
       if (!_.exists(this.source, this.params[key].requiredIf!.$exists!)) {
         return HandlerReturnType.CONTINUE;
       }
-      this.error = this.params[key].msg ||
-        `${key} is required if ${this.params[key].requiredIf!.$exists} is present`;
-      return HandlerReturnType.ERROR;
-      // $exists query is present but condition was not met, so skip it
+      // this.error = this.params[key].msg ||
+      //   `${key} is required if ${this.params[key].requiredIf!.$exists} is
+      // present`;
+      throw new ParamError(
+        ErrorType.MISSING_REQUIRED_PARAM, key, this.params[key], undefined,
+        ESpecificError.REQUIRED_IF_EXISTS,
+      );
     }
     if (this.params[key].required === false) {
       return HandlerReturnType.CONTINUE;
@@ -162,8 +269,11 @@ abstract class ReqParam {
     }
     else {
       // Required param not present
-      this.error = this.params[key].msg || `Parameter ${key} missing`;
-      return HandlerReturnType.ERROR;
+      // this.error = this.params[key].msg || `Parameter ${key} missing`;
+      // return HandlerReturnType.ERROR;
+      throw new ParamError(
+        ErrorType.MISSING_REQUIRED_PARAM, key, this.params[key]
+      );
     }
   }
 
@@ -200,8 +310,11 @@ abstract class ReqParam {
 
     if (toString.call(val) !== toString.call(new this.params[key].type!())) {
       // Value has wrong type
-      this.error = this.params[key].msg || `Invalid type for param '${key}'`;
-      return HandlerReturnType.ERROR;
+      // this.error = this.params[key].msg || `Invalid type for param '${key}'`;
+      // return HandlerReturnType.ERROR;
+      throw new ParamError(
+        ErrorType.INVALID_PARAM_TYPE, key, this.params[key]
+      );
     }
 
     return HandlerReturnType.NONE;
@@ -221,8 +334,12 @@ abstract class ReqParam {
         return HandlerReturnType.NONE;
       }
     }
-    this.error = `Invalid value for ${key}`;
-    return HandlerReturnType.ERROR;
+    // this.error = `Invalid value for ${key}`;
+    // return HandlerReturnType.ERROR;
+    throw new ParamError(
+      ErrorType.VALIDATION_ERROR, key, this.params[key], undefined,
+      ESpecificError.NOT_IN_ENUM,
+    );
   }
 
   async validate (key: string, req: Request) {
@@ -231,29 +348,40 @@ abstract class ReqParam {
     if (this.params[key].validate instanceof Array) {
       fns = this.params[key].validate as ValidateFunction[];
     }
+    // This may be deprecated in v5 as ParamBuilder always sets validate as an
+    // array.
+    /* istanbul ignore next */
     else if (this.params[key].validate instanceof Object) {
       fns = [ (this.params[key].validate as ValidateFunction) ];
     }
 
     const val = _.get(this.source, key);
 
-    // Run all at once
-    const validateResults = await Promise.all(fns.map(v => v(val, req)));
-    // Check all the results, if any failed return
-    for (const result of validateResults) {
+    // Fixes #10
+    for (const fn of fns) {
+      let result;
+
+      try {
+        result = await fn(val, req);
+      }
+      catch (e) {
+        if (!(e instanceof ValidationError)) {
+          throw e;
+        }
+        result = e;
+      }
+
       if (result === true) {
         continue;
       }
 
-      this.error = (
-        (typeof result === 'string')
-          ? result
-          : (
-            this.params[key].msg
-            || `Invalid parameter ${key}`
-          )
+      throw new ParamError(
+        ErrorType.VALIDATION_ERROR, key, this.params[key],
+        // If the validate function returned a string use it as error message
+        (typeof result === 'string') ? result : undefined,
+        (result instanceof ValidationError) ? result.specificError : undefined,
+        (result instanceof ValidationError) ? result.extraData : undefined,
       );
-      return HandlerReturnType.ERROR;
     }
 
     return HandlerReturnType.NONE;
@@ -288,16 +416,28 @@ abstract class ReqParam {
         let _continue = false;
 
         for (let i = 0; i < steps.length; i++) {
-          const r = await steps[i].apply(this, stepsArgs[i]);
+          let r: HandlerReturnType;
+
+          try {
+            r = await steps[i].apply(this, stepsArgs[i]);
+          }
+          catch (e) {
+            if (e instanceof ParamError) {
+              return (this.options.onerror || defaults.onError)(
+                req, res, next, e.toString()
+              );
+            }
+            return next(e);
+          }
 
           if (r === HandlerReturnType.CONTINUE) {
             _continue = true; break;
           }
-          if (r === HandlerReturnType.ERROR) {
-            return (this.options.onerror || defaultOnerror)(
-              req, res, next, this.error!
-            );
-          }
+          // if (r === HandlerReturnType.ERROR) {
+          //   return (this.options.onerror || defaultOnerror)(
+          //     req, res, next, this.error!
+          //   );
+          // }
         }
 
         if (_continue) {
@@ -306,17 +446,21 @@ abstract class ReqParam {
       }
 
       // If all validation went well, check either groups
-      for (const key in either) {
+      for (const eitherGroup in either) {
         // There must be at least one param of either in this.source, and if
         // there is we already know it's valid
-        const present = either[key].some(
-          (paramPath: string) => _.exists(this.source, paramPath)
+        const present = either[eitherGroup].some(
+          (paramPath) => _.exists(this.source, paramPath)
         );
         // If no param is present
         if (!present) {
-          return (this.options.onerror || defaultOnerror)(
+          // return (this.options.onerror || defaultOnerror)(
+          //   req, res, next,
+          //   `At least one of ${either[key].join(', ')} must be present`
+          // );
+          return (this.options.onerror || defaults.onError)(
             req, res, next,
-            `At least one of ${either[key].join(', ')} must be present`
+            defaults.missingEitherErrorMessage(either[eitherGroup], this.params)
           );
         }
       }
@@ -377,16 +521,25 @@ export const notEmpty: ValidateFunction = (
 ) => {
   switch (typeof val) {
     case 'string':
-      return (!/^\s*$/.test(val));
+      if (!/^\s*$/.test(val)) {
+        return true;
+      }
+      break;
     case 'object':
       if (val instanceof Array) {
-        return (val.length !== 0);
+        if (val.length > 0) {
+          return true;
+        }
+        break;
       }
       else if (val) {
-        return Object.keys(val).length > 0;
+        if (Object.keys(val).length > 0) {
+          return true;
+        }
+        break;
       }
   }
-  return false;
+  throw new ValidationError(ESpecificError.NOT_EMPTY);
 };
 
 /**
@@ -396,10 +549,10 @@ export const notEmpty: ValidateFunction = (
  * @param val
  */
 export const validId: ValidateFunction = (val: string) => {
-  return (
-    typeof val === 'string'
-    && /^([a-f0-9]{12}|[a-f0-9]{24})$/.test(val)
-  );
+  if (typeof val === 'string' && /^([a-f0-9]{12}|[a-f0-9]{24})$/.test(val)) {
+    return true;
+  }
+  throw new ValidationError(ESpecificError.VALID_ID, { id: val });
 };
 
 /**
@@ -409,7 +562,7 @@ export const validId: ValidateFunction = (val: string) => {
  *
  * @param val
  * @param key the Mongoose key to check for uniqueness
- * @param model hte Mongoose model
+ * @param model the Mongoose model
  *
  * @example
  *
@@ -418,15 +571,13 @@ export const validId: ValidateFunction = (val: string) => {
  * });
  */
 /* istanbul ignore next */
-export const unique = (model: Model<any>, key: string) =>
-  <ValidateFunction> async function (val: any) {
-    try {
-      const doc = await model.findOne({ [key]: val });
-      return doc ? `${key} already in use` : true;
+export const unique = (model: Model<any>, key: string): ValidateFunction =>
+  async function (val: any) {
+    const doc = await model.findOne({ [key]: val });
+    if (!doc) {
+      return true;
     }
-    catch {
-      return false;
-    }
+    throw new ValidationError(ESpecificError.UNIQUE);
   };
 
 // Joi equivalent for reqparams ================================================
@@ -437,11 +588,13 @@ export class ParamBuilder implements Param {
   enumCmp?: Param['enumCmp'];
   nullable: Param['nullable'];
   required = true;
+  requiredIf?: Param['requiredIf'];
   type: Param['type'];
   validate: ValidateFunction[] = [];
+  name?: string;
 
   private _isObjectId = false;
-  // private _isInteger = false;
+  private _isInteger = false;
 
   private constructor (type: Param['type']) {
     this.type = type;
@@ -469,9 +622,14 @@ export class ParamBuilder implements Param {
 
   static Number ({ integer = false } = {}) {
     const inst = new ParamBuilder(Number);
-    // inst._isInteger = integer;
     if (integer) {
-      inst.validate.push(v => Number.isInteger(v));
+      inst._isInteger = true;
+      inst.validate.push(v => {
+        if (Number.isInteger(v)) {
+          return true;
+        }
+        throw new ValidationError(ESpecificError.INTEGER);
+      });
     }
 
     return inst;
@@ -491,14 +649,35 @@ export class ParamBuilder implements Param {
    *
    * All comparisons are inclusive.
    */
-  min (n: number) {
+  min (n: number, errorMessage?: string) {
     if (this.type === String || this.type === Array) {
-      this.validate.push((v: string|any[]) => v.length >= n);
+      this.validate.push(
+        (v: string|any[]) => {
+          if (v.length >= n) {
+            return true;
+          }
+          if (errorMessage) {
+            return errorMessage;
+          }
+          throw new ValidationError(ESpecificError.MIN, { min: n });
+        }
+      );
     }
     else if (this.type === Number || this.type === Date) {
-      this.validate.push((v: number|Date) => v >= n);
+      this.validate.push(
+        (v: number|Date) => {
+          if (v >= n) {
+            return true;
+          }
+          if (errorMessage) {
+            return errorMessage;
+          }
+          throw new ValidationError(ESpecificError.MIN, { min: n });
+        }
+      );
     }
     else {
+      /* istanbul ignore next */
       throw new Error(
         '.min() can only be used with strings, arrays, numbers and dates'
       );
@@ -512,14 +691,35 @@ export class ParamBuilder implements Param {
    *
    * All comparisons are inclusive.
    */
-  max (n: number) {
+  max (n: number, errorMessage?: string) {
     if (this.type === String || this.type === Array) {
-      this.validate.push((v: string|any[]) => v.length <= n);
+      this.validate.push(
+        (v: string|any[]) => {
+          if (v.length <= n) {
+            return true;
+          }
+          if (errorMessage) {
+            return errorMessage;
+          }
+          throw new ValidationError(ESpecificError.MAX, { max: n });
+        }
+      );
     }
     else if (this.type === Number || this.type === Date) {
-      this.validate.push((v: number|Date) => v <= n);
+      this.validate.push(
+        (v: number|Date) => {
+          if (v <= n) {
+            return true;
+          }
+          if (errorMessage) {
+            return errorMessage;
+          }
+          throw new ValidationError(ESpecificError.MAX, { max: n });
+        }
+      );
     }
     else {
+      /* istanbul ignore next */
       throw new Error(
         '.max() can only be used with strings, arrays, numbers and dates'
       );
@@ -533,6 +733,7 @@ export class ParamBuilder implements Param {
    */
   notEmpty () {
     if (this.type !== String && this.type !== Array && this.type !== Object) {
+      /* istanbul ignore next */
       throw new Error(
         '.notEmpty() can only be used with strings, objects, and arrays'
       );
@@ -556,6 +757,23 @@ export class ParamBuilder implements Param {
     return this;
   }
 
+  match (reg: RegExp, errorMessage?: string) {
+    if (this.type !== String) {
+      /* istanbul ignore next */
+      throw new Error('.match() can only be used with strings');
+    }
+    this.validate.push((v: string) => {
+      if (reg.test(v)) {
+        return true;
+      }
+      if (errorMessage) {
+        return errorMessage;
+      }
+      throw new ValidationError(); // This will fallback to plain invalid param
+    });
+    return this;
+  }
+
   /**
    * Set whether or not the current param is required (true by default).
    */
@@ -571,6 +789,24 @@ export class ParamBuilder implements Param {
     return this.setRequired(false);
   }
 
+  setRequiredIfExists (path: string) {
+    this.requiredIf = { $exists: path };
+    return this;
+  }
+
+  /**
+   * Set the parameter's name. This name will be used when generating error
+   * messages.
+   *
+   * By default, the parameter `user.name.first`'s name would be
+   * `user.name.first`. Setting it's name to `first name` would make error
+   * messages a lot more user friendly.
+   */
+  setName (name: string) {
+    this.name = name;
+    return this;
+  }
+
   /**
    * Whether or not to accept `null` as a valid value (false by default).
    */
@@ -584,6 +820,10 @@ export class ParamBuilder implements Param {
    * rejected.
    */
   setEnum (values: Param['enum']) {
+    if (values?.length === 0) {
+      /* istanbul ignore next */
+      throw new Error('Enum may not be empty');
+    }
     this.enum = values;
     return this;
   }
@@ -620,5 +860,24 @@ export class ParamBuilder implements Param {
 
     this.validate.push(...validate);
     return this;
+  }
+
+  /**
+   * Create and return a copy of the current Param.
+   */
+  clone () {
+    const inst = new ParamBuilder(this.type);
+    const fields = [
+      'either', 'enum', 'enumCmp', 'nullable', 'required', 'requiredIf',
+      'validate', 'name', '_isObjectId', '_isInteger',
+    ];
+
+    for (const f of fields) {
+      if (_.exists(this, f)) {
+        _.set(inst, f, _.get(this, f));
+      }
+    }
+
+    return inst;
   }
 }

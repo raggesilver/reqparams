@@ -13,7 +13,7 @@ import * as bodyParser from 'body-parser';
 
 import { randomBytes } from 'crypto';
 
-import { reqall, notEmpty, ParamBuilder } from '../src';
+import { reqall, ParamBuilder } from '../src';
 
 const app = express();
 const port = Number(process.env.PORT) || 9143;
@@ -22,7 +22,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 const postAMid = reqall('body', {
-  username: { validate: notEmpty },
+  username: ParamBuilder.String().notEmpty(),
 });
 
 app.post('/a', postAMid, (_req, res) => {
@@ -61,10 +61,9 @@ const passReqMid = reqall('body', {
 
 app.post('/passreq', passReqMid, (req, res) => res.status(200).json(req.body));
 
-const resourceByIdMid = reqall(
-  'params',
-  { id: ParamBuilder.ObjectId() }
-);
+const resourceByIdMid = reqall('params', {
+  id: ParamBuilder.ObjectId(),
+});
 
 app.get('/resource_by_id/:id', resourceByIdMid, (req, res) => {
   return res.status(200).json({
@@ -95,8 +94,8 @@ app.post('/required_and_nullable', requiredAndNullable, (req, res) => {
 });
 
 const requiredIf = reqall('body', {
-  'name.first': { requiredIf: { $exists: 'name' }},
-  'name.last': { requiredIf: { $exists: 'name' }},
+  'name.first': ParamBuilder.String().setRequiredIfExists('name'),
+  'name.last': ParamBuilder.String().setRequiredIfExists('name'),
 });
 
 app.post('/required_if', requiredIf, (req, res) => {
@@ -104,9 +103,9 @@ app.post('/required_if', requiredIf, (req, res) => {
 });
 
 const requiredIf2 = reqall('body', {
-  'user.name.first': { requiredIf: { $exists: 'user.name' }},
-  'user.name.last': { requiredIf: { $exists: 'user.name' }},
-  'user.address.line1': { requiredIf: { $exists: 'user' }},
+  'user.name.first': ParamBuilder.String().setRequiredIfExists('user.name'),
+  'user.name.last': ParamBuilder.String().setRequiredIfExists('user.name'),
+  'user.address.line1': ParamBuilder.String().setRequiredIfExists('user'),
 });
 
 app.post('/required_if2', requiredIf2, (req, res) => {
@@ -116,8 +115,8 @@ app.post('/required_if2', requiredIf2, (req, res) => {
 const requiredIf3 = reqall('body', {
   'user.name.first': ParamBuilder.String(),
   'user.name.last': ParamBuilder.String(),
-  'user.partner.name.first': { ...ParamBuilder.String().notEmpty(), requiredIf: { $exists: 'user.partner' }},
-  'user.partner.name.last': { ...ParamBuilder.String().notEmpty(), requiredIf: { $exists: 'user.partner' }},
+  'user.partner.name.first': ParamBuilder.String().notEmpty().setRequiredIfExists('user.partner'),
+  'user.partner.name.last': ParamBuilder.String().notEmpty().setRequiredIfExists('user.partner'),
 });
 
 app.post('/required_if3', requiredIf3, (req, res) => {
@@ -154,15 +153,7 @@ app.get('/todo/search', findTodoMid, (req, res) => {
 });
 
 const notUnderageMid = reqall('body', {
-  dob: {
-    type: Date,
-    validate: (v: Date) => {
-      return (
-        (Date.now() - v.getTime() >= 1000 * 60 * 60 * 24 * 365 * 18)
-          ? true : 'Grow up first, kid'
-      );
-    },
-  },
+  dob: ParamBuilder.Date().max(Date.now() - (1000 * 60 * 60 * 24 * 365 * 18), 'Grow up first, kid'),
 });
 
 app.post('/not_underage', notUnderageMid, (req, res) => {
@@ -183,14 +174,12 @@ app.get('/my_daily_tasks', aWeekDay, (req, res) => {
 });
 
 const aWeekDay2 = reqall('query', {
-  day: {
-    type: String,
-    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    enumCmp: (a, b) => (
+  day: ParamBuilder.String()
+    .setEnum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
+    .setEnumCmp((a, b) => (
       typeof a === 'string' && typeof b === 'string'
       && a.toLowerCase() === b.toLowerCase()
-    ),
-  },
+    )),
 });
 
 app.get('/my_daily_tasks2', aWeekDay2, (req, res) => {
@@ -225,7 +214,7 @@ test('POST /a { username: notEmpty } FAIL', async () => {
   }
   catch (e) {
     expect(e.response.status).toBe(400);
-    expect(e.response.data).toMatchObject({ error: 'Parameter username missing' });
+    expect(e.response.data).toMatchObject({ error: 'username is required' });
   }
 });
 
@@ -247,7 +236,7 @@ test('POST /nest { username: notEmpty } FAIL', async () => {
   catch (e) {
     expect(e.response.status).toBe(400);
     expect(e.response.data).toMatchObject({
-      error: 'Parameter name.last missing',
+      error: 'name.last is required',
     });
   }
 });
@@ -322,7 +311,7 @@ test('GET /resource_by_id/:id FAIL', async () => {
     await axios.get(`/resource_by_id/${invalid_id}`);
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid parameter id');
+    expect(e.response?.data.error).toBe('tttttttttttt is not a valid id');
   }
 });
 
@@ -333,7 +322,7 @@ test('GET /resource_by_id/:id FAIL 2', async () => {
     await axios.get(`/resource_by_id/${invalid_id}`);
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid parameter id');
+    expect(e.response?.data.error).toBe('aaaaaaaaaaaaaaaaaaaaaaaaa is not a valid id');
   }
 });
 
@@ -358,7 +347,7 @@ test('POST /allow_null FAIL', async () => {
     await axios.post('/allow_null', { name: null, age: null });
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid type for param \'age\'');
+    expect(e.response?.data.error).toBe('Invalid type for age');
   }
 });
 
@@ -401,7 +390,7 @@ test('POST /required_and_nullable FAIL', async () => {
     await axios.post('/required_and_nullable', {});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Parameter name missing');
+    expect(e.response?.data.error).toBe('name is required');
   }
 });
 
@@ -424,7 +413,7 @@ test('POST /required_if FAIL', async () => {
     await axios.post('/required_if', { name: { whatever: 'Blah' }});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('name.first is required if name is present');
+    expect(e.response?.data.error).toBe('name.first is required when name is provided');
   }
 });
 
@@ -434,7 +423,7 @@ test('POST /required_if FAIL 2', async () => {
     await axios.post('/required_if', { name: { first: 'Hacker' }});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('name.last is required if name is present');
+    expect(e.response?.data.error).toBe('name.last is required when name is provided');
   }
 });
 
@@ -476,7 +465,7 @@ test('POST /required_if3 FAIL', async () => {
     });
   }
   catch (e) {
-    expect(e.response?.data?.error).toBe('user.partner.name.first is required if user.partner is present');
+    expect(e.response?.data?.error).toBe('user.partner.name.first is required when user.partner is provided');
   }
 });
 
@@ -499,7 +488,7 @@ test('POST /either FAIL', async () => {
     await axios.post('/either', { password: 'sEcUrE123!' });
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('At least one of email, phone must be present');
+    expect(e.response?.data.error).toBe('One of email or phone is required');
   }
 });
 
@@ -517,7 +506,7 @@ test('POST /todo FAIL', async () => {
     await axios.post('/todo', { todo: [], name: 'I\'m lazy' });
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid parameter todo');
+    expect(e.response?.data.error).toBe('todo may not be empty');
   }
 });
 
@@ -533,7 +522,7 @@ test('POST /todo FAIL 2', async () => {
     await axios.post('/todo', { todo: ['AA'], name: 'I\'m not lazy', something: {}});
   }
   catch (e) {
-    expect(e.response?.data.error).toBe('Invalid parameter something');
+    expect(e.response?.data.error).toBe('something may not be empty');
   }
 });
 
@@ -562,16 +551,22 @@ test('GET /todo/search OK 2', async () => {
 // Test date values ============================================================
 
 test('POST /not_underage OK', async () => {
-  const dob = new Date();
+  expect.assertions(2);
+  try {
+    const dob = new Date();
 
-  dob.setFullYear(1990);
+    dob.setFullYear(1990);
 
-  const res = await axios.post('/not_underage', {
-    dob,
-  });
+    const res = await axios.post('/not_underage', {
+      dob,
+    });
 
-  expect(res.status).toBe(200);
-  expect(res.data?.dob).toBe(dob.toISOString());
+    expect(res.status).toBe(200);
+    expect(res.data?.dob).toBe(dob.toISOString());
+  }
+  catch (e) {
+    console.error(e.response.data);
+  }
 });
 
 test('POST /not_underage OK 2', async () => {
@@ -597,7 +592,7 @@ test('POST /not_underage FAIL', async () => {
   }
   catch (e) {
     expect(e.response?.status).toBe(400);
-    expect(e.response?.data.error).toBe('Invalid type for param \'dob\'');
+    expect(e.response?.data.error).toBe('Invalid type for dob');
   }
 });
 
@@ -610,7 +605,7 @@ test('POST /not_underage FAIL 2', async () => {
   }
   catch (e) {
     expect(e.response?.status).toBe(400);
-    expect(e.response?.data.error).toBe('Invalid type for param \'dob\'');
+    expect(e.response?.data.error).toBe('Invalid type for dob');
   }
 });
 
@@ -646,7 +641,7 @@ test('GET /my_daily_tasks FAIL - testing enum', async () => {
   }
   catch (e) {
     expect(e.response?.status).toBe(400);
-    expect(e.response?.data.error).toBe('Invalid value for day');
+    expect(e.response?.data.error).toBe('day must be one of Monday, Tuesday, Wednesday, Thursday or Friday');
   }
 });
 
@@ -659,7 +654,7 @@ test('GET /my_daily_tasks FAIL 2 - testing enum', async () => {
   }
   catch (e) {
     expect(e.response?.status).toBe(400);
-    expect(e.response?.data.error).toBe('Invalid value for day');
+    expect(e.response?.data.error).toBe('day must be one of Monday, Tuesday, Wednesday, Thursday or Friday');
   }
 });
 
@@ -682,7 +677,7 @@ test('GET /my_daily_tasks2 FAIL - testing enum', async () => {
   }
   catch (e) {
     expect(e.response?.status).toBe(400);
-    expect(e.response?.data.error).toBe('Invalid value for day');
+    expect(e.response?.data.error).toBe('day must be one of Monday, Tuesday, Wednesday, Thursday or Friday');
   }
 });
 
@@ -707,7 +702,7 @@ test('POST /min-max FAIL', async () => {
   })
     .catch((e: AxiosError) => {
       expect(e.response?.status).toBe(400);
-      expect(e.response?.data.error).toBe('Invalid parameter age');
+      expect(e.response?.data.error).toBe('age must be at least 18');
     });
 
   await axios.post('/min-max', {
@@ -716,7 +711,7 @@ test('POST /min-max FAIL', async () => {
   })
     .catch((e: AxiosError) => {
       expect(e.response?.status).toBe(400);
-      expect(e.response?.data.error).toBe('Invalid parameter age');
+      expect(e.response?.data.error).toBe('age must be at most 24');
     });
 
   await axios.post('/min-max', {
@@ -725,7 +720,7 @@ test('POST /min-max FAIL', async () => {
   })
     .catch((e: AxiosError) => {
       expect(e.response?.status).toBe(400);
-      expect(e.response?.data.error).toBe('Invalid parameter username');
+      expect(e.response?.data.error).toBe('username must be at least 8 characters long');
     });
 
   await axios.post('/min-max', {
@@ -734,7 +729,7 @@ test('POST /min-max FAIL', async () => {
   })
     .catch((e: AxiosError) => {
       expect(e.response?.status).toBe(400);
-      expect(e.response?.data.error).toBe('Invalid parameter username');
+      expect(e.response?.data.error).toBe('username must be at most 12 characters long');
     });
 });
 
