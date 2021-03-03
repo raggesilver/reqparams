@@ -166,6 +166,7 @@ export class ParamError extends ValidationError {
   type: ErrorType;
   paramPath: string;
   param: Param;
+  params: Params;
 
   /**
    * @param type The error type.
@@ -182,7 +183,7 @@ export class ParamError extends ValidationError {
    * @param extraData Extra data on the specific error.
    */
   constructor (
-    type: ErrorType, paramPath: string, param: Param,
+    type: ErrorType, paramPath: string, params: Params,
     msg?: string,
     specificError?: SpecificError,
     extraData?: Record<string, any>,
@@ -191,7 +192,8 @@ export class ParamError extends ValidationError {
 
     this.message = msg || '';
     this.type = type;
-    this.param = param;
+    this.param = params[paramPath];
+    this.params = params;
     this.paramPath = paramPath;
   }
 
@@ -257,7 +259,7 @@ abstract class ReqParam {
       //   `${key} is required if ${this.params[key].requiredIf!.$exists} is
       // present`;
       throw new ParamError(
-        ErrorType.MISSING_REQUIRED_PARAM, key, this.params[key], undefined,
+        ErrorType.MISSING_REQUIRED_PARAM, key, this.params, undefined,
         ESpecificError.REQUIRED_IF_EXISTS,
       );
     }
@@ -272,7 +274,7 @@ abstract class ReqParam {
       // this.error = this.params[key].msg || `Parameter ${key} missing`;
       // return HandlerReturnType.ERROR;
       throw new ParamError(
-        ErrorType.MISSING_REQUIRED_PARAM, key, this.params[key]
+        ErrorType.MISSING_REQUIRED_PARAM, key, this.params,
       );
     }
   }
@@ -313,7 +315,7 @@ abstract class ReqParam {
       // this.error = this.params[key].msg || `Invalid type for param '${key}'`;
       // return HandlerReturnType.ERROR;
       throw new ParamError(
-        ErrorType.INVALID_PARAM_TYPE, key, this.params[key]
+        ErrorType.INVALID_PARAM_TYPE, key, this.params
       );
     }
 
@@ -337,7 +339,7 @@ abstract class ReqParam {
     // this.error = `Invalid value for ${key}`;
     // return HandlerReturnType.ERROR;
     throw new ParamError(
-      ErrorType.VALIDATION_ERROR, key, this.params[key], undefined,
+      ErrorType.VALIDATION_ERROR, key, this.params, undefined,
       ESpecificError.NOT_IN_ENUM,
     );
   }
@@ -376,7 +378,7 @@ abstract class ReqParam {
       }
 
       throw new ParamError(
-        ErrorType.VALIDATION_ERROR, key, this.params[key],
+        ErrorType.VALIDATION_ERROR, key, this.params,
         // If the validate function returned a string use it as error message
         (typeof result === 'string') ? result : undefined,
         (result instanceof ValidationError) ? result.specificError : undefined,

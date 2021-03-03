@@ -108,8 +108,10 @@ const requiredIfExistsErrorMessage: ErrorMessageFunction = (name, error) => {
   // FIXME: we currently don't have a way to get a possible Param.name for
   // $exists
   const exists = error.param.requiredIf!.$exists!;
+  const existsName = error.params[exists]?.name
+    || defaults.transformers.param.pathToName(exists);
 
-  return `${name} is required when ${exists} is provided`;
+  return `${name} is required when ${existsName} is provided`;
 };
 
 // validId

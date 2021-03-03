@@ -62,6 +62,11 @@ const requirements = {
       .min(18, 'Minors cannot buy alcohol')
       .max(128, 'You are too old to drink alcohol'),
   }),
+  postPartner: reqall('body', {
+    'user.partner': ParamBuilder.Object().notRequired().setName('partner'),
+    'user.partner.name': NOT_EMPTY_STRING
+      .clone().setName('partner name').setRequiredIfExists('user.partner'),
+  }),
 };
 
 app.post('/login', requirements.postLogin, (req, res) => res.json(req.body));
@@ -72,6 +77,7 @@ app.post('/search', requirements.postPaginatedSearch, (req, res) => res.json(req
 app.post('/todo', requirements.postTodo, (req, res) => res.json(req.body));
 app.post('/date', requirements.postDate, (req, res) => res.json(req.body));
 app.post('/buy-alcohol', requirements.postBuyAlcohol, (req, res) => res.json(req.body));
+app.post('/partner', requirements.postPartner, (req, res) => res.json(req.body));
 
 const appGlobalErrorHandler = (
   _error: Error, _req: express.Request, res: express.Response,
@@ -336,6 +342,30 @@ describe('Test internal error handling', () => {
       .send({ username: 'a', password: 'a', internalError: 'yes' })
       .expect(500, {
         error: 'Something went wrong on our end',
+      }, done);
+  });
+});
+
+// .setRequiredIfExists() ======================================================
+
+describe('Test requiredIfExists naming', () => {
+  it('Should pass empty', done => {
+    supertest.post('/partner')
+      .send({})
+      .expect(200, {}, done);
+  });
+
+  it('Should pass full', done => {
+    supertest.post('/partner')
+      .send({ user: { partner: { name: 'Her' }}})
+      .expect(200, done);
+  });
+
+  it('Should fail', done => {
+    supertest.post('/partner')
+      .send({ user: { partner: {}}})
+      .expect(400, {
+        error: 'partner name is required when partner is provided',
       }, done);
   });
 });
