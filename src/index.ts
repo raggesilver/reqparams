@@ -812,7 +812,7 @@ export class ParamBuilder implements Param {
   /**
    * Whether or not to accept `null` as a valid value (false by default).
    */
-  setNullable (n: boolean) {
+  setNullable (n = true) {
     this.nullable = n;
     return this;
   }
