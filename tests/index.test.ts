@@ -175,6 +175,13 @@ app.post('/not_underage', notUnderageMid, (req, res) => {
   return res.json(req.body);
 });
 
+const requiredFnMid = reqall('body', {
+  changePassword: { type: Boolean },
+  newPassword: { type: String, validate: notEmpty, requiredIf: { $fn: req => !!req.body.changePassword }},
+});
+
+app.post('/update', requiredFnMid, (_, res) => res.status(200).json({}));
+
 const handler = app.listen(port);
 
 // ╭━━╮            ╭╮      ╭╮
@@ -595,6 +602,24 @@ test('POST /not_underage FAIL underage', async () => {
     expect(e.response?.status).toBe(400);
     expect(e.response?.data.error).toBe('Grow up first, kid');
   }
+});
+
+describe('Test requiredIf.$fn', () => {
+  it('Should pass', async () => {
+    const { status } = await axios.post('/update', { changePassword: false });
+    expect(status).toBe(200);
+  });
+
+  it('Should fail due to missing required param', async () => {
+    expect.assertions(2);
+    try {
+      await axios.post('/update', { changePassword: true });
+    }
+    catch (e) {
+      expect(e.response.status).toBe(400);
+      expect(e.response.data.error).toBe('Parameter newPassword missing');
+    }
+  });
 });
 
 // Close listener after testing

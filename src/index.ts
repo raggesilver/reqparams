@@ -25,6 +25,7 @@ import * as _ from '@raggesilver/hidash';
 
 export interface RequiredIfQuery {
   '$exists'?: string;
+  '$fn'?: (req: Request) => boolean|Promise<boolean>;
   // '$and': Array<RequiredIfQuery>;
   // '$or': Array<RequiredIfQuery>;
 };
@@ -107,7 +108,38 @@ abstract class ReqParam {
     return HandlerReturnType.NONE;
   }
 
-  existenceCheck(key: string): HandlerReturnType {
+  async requiredIfCheck(key: string, req: Request): Promise<HandlerReturnType> {
+    const param = this.params[key];
+
+    /* istanbul ignore next */
+    if (Object.keys(param.requiredIf!).length > 1) {
+      throw new Error('Only one key is supported for requiredIf');
+    }
+    /* istanbul ignore next */
+    else if (Object.keys(param.requiredIf!).length < 1) {
+      throw new Error('At least one key is required for requiredIf');
+    }
+
+    if (param.requiredIf!.$exists) {
+      // RequiredIf's required path does not exist, so skip
+      if (!_.exists(this.source, param.requiredIf!.$exists!)) {
+        return HandlerReturnType.CONTINUE;
+      }
+      this.error = param.msg ||
+        `${key} is required if ${param.requiredIf!.$exists} is present`;
+      return HandlerReturnType.ERROR;
+      // $exists query is present but condition was not met, so skip it
+    }
+    else /* if (param.requiredIf!.$fn!) */ {
+      if (await param.requiredIf!.$fn!(req)) {
+        this.error = param.msg || `Parameter ${key} missing`;
+        return HandlerReturnType.ERROR;
+      }
+      return HandlerReturnType.CONTINUE;
+    }
+  }
+
+  async existenceCheck(key: string, req: Request): Promise<HandlerReturnType> {
     // Parameter `key` is present so do nothing
     if (_.exists(this.source, key)) {
       return HandlerReturnType.NONE;
@@ -115,15 +147,8 @@ abstract class ReqParam {
 
     // Cehck for requiredIf -- this handles both a valid requireIf and an
     // invalid one, so the next `if` statement doesn't have to be an `else if`
-    if (this.params[key].requiredIf?.$exists) {
-      // RequiredIf's required path does not exist, so skip
-      if (!_.exists(this.source, this.params[key].requiredIf!.$exists!)) {
-        return HandlerReturnType.CONTINUE;
-      }
-      this.error = this.params[key].msg ||
-        `${key} is required if ${this.params[key].requiredIf!.$exists} is present`;
-      return HandlerReturnType.ERROR;
-      // $exists query is present but condition was not met, so skip it
+    if (this.params[key].requiredIf) {
+      return await this.requiredIfCheck(key, req);
     }
     if (this.params[key].required === false) {
       return HandlerReturnType.CONTINUE;
@@ -236,7 +261,7 @@ abstract class ReqParam {
       for (const key in this.params) {
         const stepsArgs = [
           [key, either],
-          [key],
+          [key, req],
           [key],
           [key, req],
         ];
