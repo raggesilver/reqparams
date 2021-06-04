@@ -1,12 +1,11 @@
 import * as express from 'express';
-import * as bodyParser from 'body-parser';
 import * as _supertest from 'supertest';
 
 import { ParamBuilder, reqall } from '../src';
 
 const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 const supertest = _supertest(app);
 
@@ -67,6 +66,10 @@ const requirements = {
     'user.partner.name': NOT_EMPTY_STRING
       .clone().setName('partner name').setRequiredIfExists('user.partner'),
   }),
+  postUpdate: reqall('body', {
+    'changePassword': ParamBuilder.Boolean(),
+    'newPassword': ParamBuilder.String().notEmpty().setRequiredIf(req => !!req.body.changePassword),
+  }),
 };
 
 app.post('/login', requirements.postLogin, (req, res) => res.json(req.body));
@@ -78,6 +81,7 @@ app.post('/todo', requirements.postTodo, (req, res) => res.json(req.body));
 app.post('/date', requirements.postDate, (req, res) => res.json(req.body));
 app.post('/buy-alcohol', requirements.postBuyAlcohol, (req, res) => res.json(req.body));
 app.post('/partner', requirements.postPartner, (req, res) => res.json(req.body));
+app.post('/update', requirements.postUpdate, (req, res) => res.json(req.body));
 
 const appGlobalErrorHandler = (
   _error: Error, _req: express.Request, res: express.Response,
@@ -367,5 +371,27 @@ describe('Test requiredIfExists naming', () => {
       .expect(400, {
         error: 'partner name is required when partner is provided',
       }, done);
+  });
+});
+
+// .setRequiredIfExists() ======================================================
+
+describe('Test requiredIf', () => {
+  it('Should pass', async () => {
+    await supertest.post('/update')
+      .send({ changePassword: false })
+      .expect(200);
+  });
+
+  it('Should fail due to missing required param', async () => {
+    await supertest.post('/update')
+      .send({ changePassword: true })
+      .expect(400, { error: 'newPassword is required' });
+  });
+
+  it('Should pass with all params', async () => {
+    await supertest.post('/update')
+      .send({ changePassword: true, newPassword: 'secure123' })
+      .expect(200);
   });
 });

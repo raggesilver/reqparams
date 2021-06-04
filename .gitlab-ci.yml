@@ -15,8 +15,6 @@ stages:
 
 install deps:
   stage: install
-  before_script:
-    - ''
   script:
     - yarn install
   cache:

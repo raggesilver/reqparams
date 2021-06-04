@@ -9,17 +9,15 @@
 //  ---------------------------- ╰╯ --------------------------------------------
 
 import * as express from 'express';
-import * as bodyParser from 'body-parser';
 
 import { randomBytes } from 'crypto';
-
 import { reqall, ParamBuilder } from '../src';
 
 const app = express();
 const port = Number(process.env.PORT) || 9143;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 const postAMid = reqall('body', {
   username: ParamBuilder.String().notEmpty(),

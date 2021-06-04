@@ -30,7 +30,6 @@
     "@typescript-eslint/eslint-plugin": "^4.15.1",
     "@typescript-eslint/parser": "^4.15.1",
     "axios": "^0.21.1",
-    "body-parser": "^1.19.0",
     "eslint": "^7.20.0",
     "eslint-plugin-jest": "^24.1.5",
     "express": "^4.17.1",
