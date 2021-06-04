@@ -82,6 +82,7 @@ export interface Param {
    */
   'enumCmp'?: (a: any, b: any) => boolean;
   'name'?: string;
+  'elements'?: Params;
 }
 
 export interface Params {
@@ -127,6 +128,7 @@ export enum ErrorType {
 }
 
 export enum ESpecificError {
+  EITHER = 'either',
   INTEGER = 'integer',
   MAX = 'max',
   MIN = 'min',
@@ -247,9 +249,11 @@ abstract class ReqParam {
   async requiredIfCheck (key: string) {
     const param = this.params[key];
 
+    /* istanbul ignore next */
     if (Object.keys(param.requiredIf!).length > 1) {
       throw new Error('Only one key is supported for requiredIf');
     }
+    /* istanbul ignore next */
     if (Object.keys(param.requiredIf!).length < 1) {
       throw new Error('At least one key is required for requiredIf');
     }
@@ -303,12 +307,13 @@ abstract class ReqParam {
     }
   }
 
-  typeCheck (key: string) {
+  async typeCheck (key: string) {
     // If type was specified
+    const param = this.params[key];
     const val = _.get(this.source, key);
 
     // We accept `null` values for `nullable` keys:
-    if (val === null && this.params[key].nullable === true) {
+    if (val === null && param.nullable === true) {
       return HandlerReturnType.CONTINUE;
     }
 
@@ -318,14 +323,14 @@ abstract class ReqParam {
     }
 
     /* istanbul ignore next */
-    if (typeof this.params[key].type !== 'function') {
+    if (typeof param.type !== 'function') {
       throw new TypeError(
         'Key type must be of type Function (e.g. Number, Array, ...)'
       );
     }
 
     // If we get a date string in ISO format for a Date type, accept it
-    if (this.params[key].type === Date && !(val instanceof Date)) {
+    if (param.type === Date && !(val instanceof Date)) {
       const d = new Date(val);
 
       if (!isNaN(Number(d)) && d.toISOString() === val) {
@@ -334,13 +339,25 @@ abstract class ReqParam {
       }
     }
 
-    if (toString.call(val) !== toString.call(new this.params[key].type!())) {
+    if (toString.call(val) !== toString.call(new param.type!())) {
       // Value has wrong type
-      // this.error = this.params[key].msg || `Invalid type for param '${key}'`;
+      // this.error = param.msg || `Invalid type for param '${key}'`;
       // return HandlerReturnType.ERROR;
       throw new ParamError(
         ErrorType.INVALID_PARAM_TYPE, key, this.params
       );
+    }
+
+    if (param.type === Array && param.elements) {
+      const ra = new ReqAll('body', this.options);
+      ra.params = param.elements;
+      ra.request = this.request;
+
+      for (const el of (val as any[])) {
+        ra.source = el;
+        // This will throw an error if there is anything wrong
+        await ra.execCycle();
+      }
     }
 
     return HandlerReturnType.NONE;
@@ -413,98 +430,91 @@ abstract class ReqParam {
     return HandlerReturnType.NONE;
   }
 
+  async execCycle () {
+    const steps: HandlerFunction[] = [
+      this.initEither,
+      this.existenceCheck,
+      this.typeCheck,
+      this.validateEnum,
+      this.validate,
+    ];
+
+    const either: IEither = {};
+
+    // Iterate through param keys
+    for (const key in this.params) {
+      const stepsArgs = [
+        [key, either],
+        [key],
+        [key],
+        [key],
+        [key, this.request],
+      ];
+
+      // TODO: is this variable necessary?
+      let _continue = false;
+
+      for (let i = 0; i < steps.length; i++) {
+        const r = await steps[i].apply(this, stepsArgs[i]);
+
+        if (r === HandlerReturnType.CONTINUE) {
+          _continue = true; break;
+        }
+      }
+
+      if (_continue) {
+        continue;
+      }
+    }
+
+    // If all validation went well, check either groups
+    for (const eitherGroup in either) {
+      // There must be at least one param of either in this.source, and if
+      // there is we already know it's valid
+      const present = either[eitherGroup].some(
+        (paramPath) => _.exists(this.source, paramPath)
+      );
+      // If no param is present
+      if (!present) {
+        throw new ParamError(
+          ErrorType.MISSING_REQUIRED_PARAM, either[eitherGroup][0],
+          this.params, undefined, ESpecificError.EITHER, { either, eitherGroup }
+        );
+      }
+    }
+
+    if (this.options.strict) {
+      const obj = {};
+
+      for (const key in this.params) {
+        if (_.exists(this.source, key)) {
+          _.set(obj, key, _.get(this.source, key));
+        }
+      }
+
+      (this.request as any)[this.sourcePath] = obj;
+    }
+  }
+
   exec (params: Params): Handler {
     this.params = params;
     return async (req, res, next) => {
       this.request = req;
       this.extractSource(req);
 
-      const steps: HandlerFunction[] = [
-        this.initEither,
-        this.existenceCheck,
-        this.typeCheck,
-        this.validateEnum,
-        this.validate,
-      ];
-
-      const either: IEither = {};
-
-      // Iterate through param keys
-      for (const key in this.params) {
-        const stepsArgs = [
-          [key, either],
-          [key],
-          [key],
-          [key],
-          [key, req],
-        ];
-
-        // TODO: is this variable necessary?
-        let _continue = false;
-
-        for (let i = 0; i < steps.length; i++) {
-          let r: HandlerReturnType;
-
-          try {
-            r = await steps[i].apply(this, stepsArgs[i]);
-          }
-          catch (e) {
-            if (e instanceof ParamError) {
-              return (this.options.onerror || defaults.onError)(
-                req, res, next, e.toString()
-              );
-            }
-            return next(e);
-          }
-
-          if (r === HandlerReturnType.CONTINUE) {
-            _continue = true; break;
-          }
-          // if (r === HandlerReturnType.ERROR) {
-          //   return (this.options.onerror || defaultOnerror)(
-          //     req, res, next, this.error!
-          //   );
-          // }
-        }
-
-        if (_continue) {
-          continue;
-        }
+      try {
+        await this.execCycle();
       }
-
-      // If all validation went well, check either groups
-      for (const eitherGroup in either) {
-        // There must be at least one param of either in this.source, and if
-        // there is we already know it's valid
-        const present = either[eitherGroup].some(
-          (paramPath) => _.exists(this.source, paramPath)
-        );
-        // If no param is present
-        if (!present) {
-          // return (this.options.onerror || defaultOnerror)(
-          //   req, res, next,
-          //   `At least one of ${either[key].join(', ')} must be present`
-          // );
+      catch (e) {
+        if (e instanceof ParamError) {
           return (this.options.onerror || defaults.onError)(
-            req, res, next,
-            defaults.missingEitherErrorMessage(either[eitherGroup], this.params)
+            req, res, next, e.toString()
           );
         }
+        return next(e);
       }
 
-      if (this.options.strict) {
-        const obj = {};
-
-        for (const key in this.params) {
-          if (_.exists(this.source, key)) {
-            _.set(obj, key, _.get(this.source, key));
-          }
-        }
-
-        (req as any)[this.sourcePath] = obj;
-      }
-
-      next();
+      return next();
     };
   }
 }
@@ -611,6 +621,7 @@ export const unique = (model: Model<any>, key: string): ValidateFunction =>
 
 export class ParamBuilder implements Param {
   either?: Param['either'];
+  elements?: Param['elements'];
   enum?: Param['enum'];
   enumCmp?: Param['enumCmp'];
   nullable: Param['nullable'];
@@ -823,6 +834,11 @@ export class ParamBuilder implements Param {
 
   setRequiredIf (fn: (req: Request) => boolean | Promise<boolean>) {
     this.requiredIf = { $fn: fn };
+    return this;
+  }
+
+  setElements (elements: Params) {
+    this.elements = elements;
     return this;
   }
 

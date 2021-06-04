@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { ParamError, ErrorType, ESpecificError, Params } from '.';
+import { ParamError, ErrorType, ESpecificError, IEither } from '.';
 import { maybePlural } from './utils';
 
 function paramPathToName (path: string) {
@@ -120,7 +120,11 @@ const validIdErrorMessage: ErrorMessageFunction = (_name, error) => {
 };
 
 // missingEither
-const missingEitherErrorMessage = (either: string[], params: Params) => {
+const eitherErrorMessage: ErrorMessageFunction = (_, error) => {
+  const eitherGroups = error.extraData!.either as IEither;
+  const either = eitherGroups[error.extraData!.eitherGroup as string];
+  const params = error.params;
+
   const names = either.map(el => {
     return params[el]?.name || defaults.transformers.param.pathToName(el);
   });
@@ -142,6 +146,7 @@ const missingEitherErrorMessage = (either: string[], params: Params) => {
 const errorMessages: {
   [k in ESpecificError]: ErrorMessageFunction;
 } = {
+  either: eitherErrorMessage,
   integer: integerErrorMessage,
   notEmpty: notEmptyErrorMessage,
   min: minMaxErrorMessage,
@@ -162,7 +167,6 @@ const defaults = {
    */
   onError: defaultOnError,
   errorMessages: errorMessages,
-  missingEitherErrorMessage: missingEitherErrorMessage,
   transformers: {
     param: {
       /**
