@@ -916,8 +916,8 @@ export class ParamBuilder implements Param {
   clone () {
     const inst = new ParamBuilder(this.type);
     const fields = [
-      'either', 'enum', 'enumCmp', 'nullable', 'required', 'requiredIf',
-      'validate', 'name', '_isObjectId', '_isInteger',
+      'either', 'elements', 'enum', 'enumCmp', 'nullable', 'required',
+      'requiredIf', 'validate', 'name', '_isObjectId', '_isInteger',
     ];
 
     for (const f of fields) {
