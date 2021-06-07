@@ -70,6 +70,18 @@ const requirements = {
     'changePassword': ParamBuilder.Boolean(),
     'newPassword': ParamBuilder.String().notEmpty().setRequiredIf(req => !!req.body.changePassword),
   }),
+  postArray: reqall('body', {
+    'stocks': ParamBuilder.Array().setElements({
+      'name': ParamBuilder.String().notEmpty().setName('stock name'),
+    }),
+  }),
+  postNestedArray: reqall('body', {
+    'stocks': ParamBuilder.Array().setElements({
+      'shares': ParamBuilder.Array().setElements({
+        'name': ParamBuilder.String().notEmpty().setName('stock share name'),
+      }),
+    }),
+  }),
 };
 
 app.post('/login', requirements.postLogin, (req, res) => res.json(req.body));
@@ -82,6 +94,8 @@ app.post('/date', requirements.postDate, (req, res) => res.json(req.body));
 app.post('/buy-alcohol', requirements.postBuyAlcohol, (req, res) => res.json(req.body));
 app.post('/partner', requirements.postPartner, (req, res) => res.json(req.body));
 app.post('/update', requirements.postUpdate, (req, res) => res.json(req.body));
+app.post('/array', requirements.postArray, (req, res) => res.json(req.body));
+app.post('/nested-array', requirements.postNestedArray, (req, res) => res.json(req.body));
 
 const appGlobalErrorHandler = (
   _error: Error, _req: express.Request, res: express.Response,
@@ -374,7 +388,7 @@ describe('Test requiredIfExists naming', () => {
   });
 });
 
-// .setRequiredIfExists() ======================================================
+// .setRequiredIf() ============================================================
 
 describe('Test requiredIf', () => {
   it('Should pass', async () => {
@@ -393,5 +407,53 @@ describe('Test requiredIf', () => {
     await supertest.post('/update')
       .send({ changePassword: true, newPassword: 'secure123' })
       .expect(200);
+  });
+});
+
+// .setElements() ==============================================================
+
+describe('Test setElements', () => {
+  it('Should pass', async () => {
+    await supertest.post('/array')
+      .send({
+        stocks: [
+          { name: 'Something' },
+        ],
+      })
+      .expect(200);
+  });
+
+  it('Should fail due to incorrect element prop type', async () => {
+    await supertest.post('/array')
+      .send({
+        stocks: [
+          { name: 42 },
+        ],
+      })
+      .expect(400, {
+        error: 'Invalid type for stock name',
+      });
+  });
+
+  it('Should pass nested', async () => {
+    await supertest.post('/nested-array')
+      .send({
+        stocks: [
+          { shares: [{ name: 'Something' }] },
+        ],
+      })
+      .expect(200);
+  });
+
+  it('Should fail nested due to incorrect element prop type', async () => {
+    await supertest.post('/nested-array')
+      .send({
+        stocks: [
+          { shares: [{ name: '42' }, { name: 42 }] },
+        ],
+      })
+      .expect(400, {
+        error: 'Invalid type for stock share name',
+      });
   });
 });
