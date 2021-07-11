@@ -520,9 +520,9 @@ abstract class ReqParam {
 }
 
 class ReqAll extends ReqParam {
-  src: string;
+  src: keyof Request;
 
-  constructor (src: string, options?: ParamOptions) {
+  constructor (src: keyof Request, options?: ParamOptions) {
     super();
 
     this.sourcePath = src;
@@ -784,13 +784,10 @@ export class ParamBuilder implements Param {
    * Check whether or not the given value doesn't already exist in a databse for
    * a specific model.
    *
-   * @param key the mongoose key to check for uniqueness
+   * @param key the path to the schema field to check for uniqueness
    * @param model the mongoose model to perform the check
    */
   unique (key: string, model: Model<any>) {
-    if (!this._isObjectId) {
-      throw new Error('.unique() can only be used with ObjectIds');
-    }
     this.validate.push(unique(model, key));
     return this;
   }
