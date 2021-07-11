@@ -24,7 +24,7 @@ import { Model } from 'mongoose';
 
 import _defaults from './defaults';
 
-import * as _ from '@raggesilver/hidash';
+import _ from '@raggesilver/hidash';
 
 export const defaults = _defaults;
 
