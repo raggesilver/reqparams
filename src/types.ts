@@ -18,35 +18,35 @@ export interface Param {
    * string which implies the value is invalid and the string will be used
    * as the error message.
    */
-  'validate': ValidateFunction[];
+  validate: ValidateFunction[];
   /**
    * Whether or not the parameter is required (default `true`). Starting from
    * v4.0.0 `required: false` no longer implies `nullable: true`.
    */
-  'required': (req: Request) => Promise<boolean>;
+  required: (req: Request) => Promise<boolean>;
   /**
    * A type constructor to check against the payload value (ie. Array, String,
    * Number, Boolean...).
    */
-  'type'?: Constructor;
+  type?: Constructor;
   // FIXME: add docs
-  'either'?: string | number;
+  either?: string | number;
   /**
    * Whether or not `null` is accepted.
    * @default false
    */
-  'nullable': boolean;
+  nullable: boolean;
   /**
    * Only allow values contained in this array. This will be executed BEFORE
    * the validate functions.
    */
-  'enum'?: Array<string | number | boolean | Date>;
+  enum?: Array<string | number | boolean | Date>;
   /**
    * A compare function to be used in the `enum` element comparison.
    */
-  'enumCmp'?: (a: any, b: any) => boolean;
+  enumCmp?: (a: any, b: any) => boolean;
   // FIXME: add docs
-  'name'?: string;
+  name?: string;
 }
 
 export interface Params {

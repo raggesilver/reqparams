@@ -14,7 +14,8 @@ export default function (type: Constructor): ValidateFunction {
     if (type === Date && ['string', 'number'].includes(typeof val)) {
       const d = new Date(val);
       if (
-        !isNaN(Number(d)) && (d.toISOString() === val || d.getTime() === val)
+        !isNaN(Number(d)) &&
+        (d.toISOString() === val || d.getTime() === val)
       ) {
         _.set(req, path, val);
         return true;

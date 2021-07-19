@@ -2,7 +2,7 @@ import { Constructor, Param } from '../types';
 
 import typeCheck from '../validate/type';
 
-export function defaultEnumCmp (a: any, b: any) {
+export function defaultEnumCmp(a: any, b: any) {
   return a === b;
 }
 
@@ -16,7 +16,7 @@ export default class ParamBuilder implements Param {
   type: Param['type'];
   validate: Param['validate'] = [];
 
-  protected constructor (type: Constructor) {
+  protected constructor(type: Constructor) {
     this.type = type;
     this.validate = [typeCheck(this.type)];
   }

@@ -5,7 +5,7 @@ import _ from '@raggesilver/hidash';
 
 export { default as ParamBuilder } from './param-builder/index';
 
-export function reqparams (source: keyof Request, params: Params): Handler {
+export function reqparams(source: keyof Request, params: Params): Handler {
   return async (req, res, next) => {
     for (const key of Object.keys(params)) {
       const param = params[key];
@@ -21,8 +21,7 @@ export function reqparams (source: keyof Request, params: Params): Handler {
             return res.status(400).json({ error: result });
           }
         }
-      }
-      catch (e) {
+      } catch (e) {
         return next(e);
       }
     }

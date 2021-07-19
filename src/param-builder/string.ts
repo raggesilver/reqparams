@@ -6,11 +6,11 @@ import ParamBuilder from './default';
 export interface StringBuilder extends ParamBuilder, MinMax, NotEmpty {}
 
 export class StringBuilder extends ParamBuilder {
-  constructor () {
+  constructor() {
     super(String);
   }
 
-  matches (reg: RegExp, errorMessage?: string) {
+  matches(reg: RegExp, errorMessage?: string) {
     this.validate.push((v: string) => {
       if (!v.match(reg)) {
         return errorMessage || 'FIXME: throw error';

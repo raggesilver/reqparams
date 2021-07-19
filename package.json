@@ -8,10 +8,12 @@
     "dist/**/*"
   ],
   "scripts": {
+    "prepare": "husky install",
     "prepublishOnly": "npm run build",
     "build": "tsc",
     "test": "jest --verbose",
-    "lint": "eslint"
+    "lint": "eslint",
+    "format": "prettier --write src"
   },
   "repository": "git@gitlab.com:raggesilver-npm/reqparams.git",
   "author": "Paulo Queiroz <pvaqueiroz@gmail.com>",
@@ -30,10 +32,14 @@
     "@typescript-eslint/parser": "^4.28.2",
     "axios": "^0.21.1",
     "eslint": "^7.30.0",
+    "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jest": "^24.3.6",
+    "eslint-plugin-prettier": "^3.4.0",
     "express": "^4.17.1",
+    "husky": "^7.0.1",
     "jest": "^27.0.6",
     "mongoose": "^5.13.2",
+    "prettier": "^2.3.2",
     "supertest": "^6.1.3",
     "ts-jest": "^27.0.3",
     "typescript": "^4.3.5"
