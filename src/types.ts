@@ -1,11 +1,16 @@
 import { Request } from 'express';
+import { LifecycleInstruction } from './lifecycle-instruction';
 
 export type ValidateFunction = (
   val: any,
   req: Request,
   param: Param,
   path: string,
-) => boolean | string | Promise<boolean | string>;
+) =>
+  | boolean
+  | string
+  | LifecycleInstruction
+  | Promise<boolean | string | LifecycleInstruction>;
 
 export interface Constructor extends Function {
   new (...args: any[]): any;
@@ -23,12 +28,12 @@ export interface Param {
    * Whether or not the parameter is required (default `true`). Starting from
    * v4.0.0 `required: false` no longer implies `nullable: true`.
    */
-  required: (req: Request) => Promise<boolean>;
+  required: (req: Request) => boolean | Promise<boolean>;
   /**
    * A type constructor to check against the payload value (ie. Array, String,
    * Number, Boolean...).
    */
-  type?: Constructor;
+  type: Constructor;
   // FIXME: add docs
   either?: string | number;
   /**
