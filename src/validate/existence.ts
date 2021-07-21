@@ -5,12 +5,11 @@ import { ValidateFunction } from '../types';
 
 export default function existence(): ValidateFunction {
   return async (_v, req, param, path) => {
-    const isParamRequired = await param.required(req);
     if (_.exists(req, path)) {
       return true;
     }
-    // TODO: implement required if
-    // if (param.requiredIf)
+    const isParamRequired = await param.required(req);
+    // If param is not required and doesn't exist skip all further validation
     if (!isParamRequired) {
       return LifecycleInstruction.SKIP;
     }

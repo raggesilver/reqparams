@@ -17,21 +17,24 @@ app.post('/notemtpy', postNotEmptyMid, (req, res) => res.json(req.body));
 
 describe('Test StringBuilder', () => {
   it('Pass min max', async () => {
-    await agent.post('/minmax')
+    await agent
+      .post('/minmax')
       .send({ name: 'May' })
       .expect(200)
       .catch(e => console.error(e));
   });
 
   it('Pass notEmpty', async () => {
-    await agent.post('/notemtpy')
+    await agent
+      .post('/notemtpy')
       .send({ name: 'May' })
       .expect(200)
       .catch(e => console.error(e));
   });
 
   it('Fail notEmpty', async () => {
-    await agent.post('/notemtpy')
+    await agent
+      .post('/notemtpy')
       .send({ name: '     ' })
       .expect(400, { error: 'Name cannot be empty' });
   });

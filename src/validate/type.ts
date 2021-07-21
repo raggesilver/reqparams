@@ -2,6 +2,9 @@ import { ValidateFunction } from '../types';
 
 import _ from '@raggesilver/hidash';
 
+// FIXME: the comparing logic for type conversion & validation should have it's
+// own function in order for other components to use it.
+
 export default function (): ValidateFunction {
   return (val: any, req, param, path) => {
     // Check for null
