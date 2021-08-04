@@ -12,7 +12,7 @@
     "prepublishOnly": "npm run build",
     "build": "tsc",
     "test": "jest --verbose",
-    "lint": "eslint",
+    "lint": "eslint src",
     "format": "prettier --write src"
   },
   "repository": "git@gitlab.com:raggesilver-npm/reqparams.git",
@@ -38,6 +38,7 @@
     "express": "^4.17.1",
     "husky": "^7.0.1",
     "jest": "^27.0.6",
+    "lint-staged": "^11.1.1",
     "mongoose": "^5.13.2",
     "prettier": "^2.3.2",
     "supertest": "^6.1.3",
