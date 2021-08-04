@@ -6,6 +6,8 @@
 
 - [`MinMax`](./Class-MinMax)
 
+- [`LessGreater`](./Class-LessGreater)<`number`\>
+
   ↳ **`NumberBuilder`**
 
 ## Table of contents
@@ -19,11 +21,7 @@
 - [either](./Class-NumberBuilder#either)
 - [enum](./Class-NumberBuilder#enum)
 - [enumCmp](./Class-NumberBuilder#enumcmp)
-- [geq](./Class-NumberBuilder#geq)
-- [gt](./Class-NumberBuilder#gt)
 - [isInteger](./Class-NumberBuilder#isinteger)
-- [leq](./Class-NumberBuilder#leq)
-- [lt](./Class-NumberBuilder#lt)
 - [name](./Class-NumberBuilder#name)
 - [nullable](./Class-NumberBuilder#nullable)
 - [required](./Class-NumberBuilder#required)
@@ -32,12 +30,16 @@
 
 ### Methods
 
+- [geq](./Class-NumberBuilder#geq)
 - [greaterThan](./Class-NumberBuilder#greaterthan)
 - [greaterThanOrEqual](./Class-NumberBuilder#greaterthanorequal)
+- [gt](./Class-NumberBuilder#gt)
 - [integer](./Class-NumberBuilder#integer)
 - [isRequired](./Class-NumberBuilder#isrequired)
+- [leq](./Class-NumberBuilder#leq)
 - [lessThan](./Class-NumberBuilder#lessthan)
 - [lessThanOrEqual](./Class-NumberBuilder#lessthanorequal)
+- [lt](./Class-NumberBuilder#lt)
 - [max](./Class-NumberBuilder#max)
 - [min](./Class-NumberBuilder#min)
 - [notRequired](./Class-NumberBuilder#notrequired)
@@ -52,11 +54,11 @@
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[constructor](./Class-MinMax#constructor)
+[LessGreater](./Class-LessGreater).[constructor](./Class-LessGreater#constructor)
 
 #### Defined in
 
-src/param-builder/number.ts:11
+src/param-builder/number.ts:15
 
 ## Properties
 
@@ -66,7 +68,7 @@ src/param-builder/number.ts:11
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[either](./Class-MinMax#either)
+[LessGreater](./Class-LessGreater).[either](./Class-LessGreater#either)
 
 #### Defined in
 
@@ -83,7 +85,7 @@ the validate functions.
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[enum](./Class-MinMax#enum)
+[LessGreater](./Class-LessGreater).[enum](./Class-LessGreater#enum)
 
 #### Defined in
 
@@ -97,61 +99,11 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[enumCmp](./Class-MinMax#enumcmp)
+[LessGreater](./Class-LessGreater).[enumCmp](./Class-LessGreater#enumcmp)
 
 #### Defined in
 
 src/param-builder/default.ts:26
-
-___
-
-### geq
-
-• **geq**: (`n`: `number`, `errorMessage?`: `string`) => [`NumberBuilder`](./Class-NumberBuilder)
-
-#### Type declaration
-
-▸ (`n`, `errorMessage?`): [`NumberBuilder`](./Class-NumberBuilder)
-
-##### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `n` | `number` |
-| `errorMessage?` | `string` |
-
-##### Returns
-
-[`NumberBuilder`](./Class-NumberBuilder)
-
-#### Defined in
-
-src/param-builder/number.ts:101
-
-___
-
-### gt
-
-• **gt**: (`n`: `number`, `errorMessage?`: `string`) => [`NumberBuilder`](./Class-NumberBuilder)
-
-#### Type declaration
-
-▸ (`n`, `errorMessage?`): [`NumberBuilder`](./Class-NumberBuilder)
-
-##### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `n` | `number` |
-| `errorMessage?` | `string` |
-
-##### Returns
-
-[`NumberBuilder`](./Class-NumberBuilder)
-
-#### Defined in
-
-src/param-builder/number.ts:100
 
 ___
 
@@ -161,57 +113,7 @@ ___
 
 #### Defined in
 
-src/param-builder/number.ts:9
-
-___
-
-### leq
-
-• **leq**: (`n`: `number`, `errorMessage?`: `string`) => [`NumberBuilder`](./Class-NumberBuilder)
-
-#### Type declaration
-
-▸ (`n`, `errorMessage?`): [`NumberBuilder`](./Class-NumberBuilder)
-
-##### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `n` | `number` |
-| `errorMessage?` | `string` |
-
-##### Returns
-
-[`NumberBuilder`](./Class-NumberBuilder)
-
-#### Defined in
-
-src/param-builder/number.ts:103
-
-___
-
-### lt
-
-• **lt**: (`n`: `number`, `errorMessage?`: `string`) => [`NumberBuilder`](./Class-NumberBuilder)
-
-#### Type declaration
-
-▸ (`n`, `errorMessage?`): [`NumberBuilder`](./Class-NumberBuilder)
-
-##### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `n` | `number` |
-| `errorMessage?` | `string` |
-
-##### Returns
-
-[`NumberBuilder`](./Class-NumberBuilder)
-
-#### Defined in
-
-src/param-builder/number.ts:102
+src/param-builder/number.ts:13
 
 ___
 
@@ -221,7 +123,7 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[name](./Class-MinMax#name)
+[LessGreater](./Class-LessGreater).[name](./Class-LessGreater#name)
 
 #### Defined in
 
@@ -237,7 +139,7 @@ Whether or not `null` is accepted.
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[nullable](./Class-MinMax#nullable)
+[LessGreater](./Class-LessGreater).[nullable](./Class-LessGreater#nullable)
 
 #### Defined in
 
@@ -268,7 +170,7 @@ v4.0.0 `required: false` no longer implies `nullable: true`.
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[required](./Class-MinMax#required)
+[LessGreater](./Class-LessGreater).[required](./Class-LessGreater#required)
 
 #### Defined in
 
@@ -285,7 +187,7 @@ Number, Boolean...).
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[type](./Class-MinMax#type)
+[LessGreater](./Class-LessGreater).[type](./Class-LessGreater#type)
 
 #### Defined in
 
@@ -304,13 +206,37 @@ as the error message.
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[validate](./Class-MinMax#validate)
+[LessGreater](./Class-LessGreater).[validate](./Class-LessGreater#validate)
 
 #### Defined in
 
 src/param-builder/default.ts:31
 
 ## Methods
+
+### geq
+
+▸ **geq**(...`args`): [`NumberBuilder`](./Class-NumberBuilder)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `...args` | [n: number, errorMessage?: string] |
+
+#### Returns
+
+[`NumberBuilder`](./Class-NumberBuilder)
+
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[geq](./Class-LessGreater#geq)
+
+#### Defined in
+
+src/param-builder/mixins/less-greater.ts:77
+
+___
 
 ### greaterThan
 
@@ -327,9 +253,13 @@ src/param-builder/default.ts:31
 
 [`NumberBuilder`](./Class-NumberBuilder)
 
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[greaterThan](./Class-LessGreater#greaterthan)
+
 #### Defined in
 
-src/param-builder/number.ts:49
+src/param-builder/mixins/less-greater.ts:55
 
 ___
 
@@ -348,9 +278,37 @@ ___
 
 [`NumberBuilder`](./Class-NumberBuilder)
 
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[greaterThanOrEqual](./Class-LessGreater#greaterthanorequal)
+
 #### Defined in
 
-src/param-builder/number.ts:32
+src/param-builder/mixins/less-greater.ts:60
+
+___
+
+### gt
+
+▸ **gt**(...`args`): [`NumberBuilder`](./Class-NumberBuilder)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `...args` | [n: number, errorMessage?: string] |
+
+#### Returns
+
+[`NumberBuilder`](./Class-NumberBuilder)
+
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[gt](./Class-LessGreater#gt)
+
+#### Defined in
+
+src/param-builder/mixins/less-greater.ts:73
 
 ___
 
@@ -370,7 +328,7 @@ ___
 
 #### Defined in
 
-src/param-builder/number.ts:15
+src/param-builder/number.ts:19
 
 ___
 
@@ -390,11 +348,35 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[isRequired](./Class-MinMax#isrequired)
+[LessGreater](./Class-LessGreater).[isRequired](./Class-LessGreater#isrequired)
 
 #### Defined in
 
 src/param-builder/default.ts:53
+
+___
+
+### leq
+
+▸ **leq**(...`args`): [`NumberBuilder`](./Class-NumberBuilder)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `...args` | [n: number, errorMessage?: string] |
+
+#### Returns
+
+[`NumberBuilder`](./Class-NumberBuilder)
+
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[leq](./Class-LessGreater#leq)
+
+#### Defined in
+
+src/param-builder/mixins/less-greater.ts:69
 
 ___
 
@@ -413,9 +395,13 @@ ___
 
 [`NumberBuilder`](./Class-NumberBuilder)
 
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[lessThan](./Class-LessGreater#lessthan)
+
 #### Defined in
 
-src/param-builder/number.ts:83
+src/param-builder/mixins/less-greater.ts:45
 
 ___
 
@@ -434,9 +420,37 @@ ___
 
 [`NumberBuilder`](./Class-NumberBuilder)
 
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[lessThanOrEqual](./Class-LessGreater#lessthanorequal)
+
 #### Defined in
 
-src/param-builder/number.ts:66
+src/param-builder/mixins/less-greater.ts:50
+
+___
+
+### lt
+
+▸ **lt**(...`args`): [`NumberBuilder`](./Class-NumberBuilder)
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `...args` | [n: number, errorMessage?: string] |
+
+#### Returns
+
+[`NumberBuilder`](./Class-NumberBuilder)
+
+#### Inherited from
+
+[LessGreater](./Class-LessGreater).[lt](./Class-LessGreater#lt)
+
+#### Defined in
+
+src/param-builder/mixins/less-greater.ts:65
 
 ___
 
@@ -500,7 +514,7 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[notRequired](./Class-MinMax#notrequired)
+[LessGreater](./Class-LessGreater).[notRequired](./Class-LessGreater#notrequired)
 
 #### Defined in
 
@@ -524,7 +538,7 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[setName](./Class-MinMax#setname)
+[LessGreater](./Class-LessGreater).[setName](./Class-LessGreater#setname)
 
 #### Defined in
 
@@ -548,7 +562,7 @@ ___
 
 #### Inherited from
 
-[MinMax](./Class-MinMax).[setRequired](./Class-MinMax#setrequired)
+[LessGreater](./Class-LessGreater).[setRequired](./Class-LessGreater#setrequired)
 
 #### Defined in
 

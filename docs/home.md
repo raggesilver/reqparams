@@ -10,6 +10,7 @@
 - [param-builder](./modules/Module-param-builder)
 - [param-builder/default](./modules/Module-param-builder/default)
 - [param-builder/mixins/enum](./modules/Module-param-builder/mixins/enum)
+- [param-builder/mixins/less-greater](./modules/Module-param-builder/mixins/less-greater)
 - [param-builder/mixins/min-max](./modules/Module-param-builder/mixins/min-max)
 - [param-builder/mixins/not-empty](./modules/Module-param-builder/mixins/not-empty)
 - [param-builder/number](./modules/Module-param-builder/number)

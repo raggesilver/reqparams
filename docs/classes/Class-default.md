@@ -6,6 +6,8 @@
 
   ↳ [`Enum`](./Class-Enum)
 
+  ↳ [`LessGreater`](./Class-LessGreater)
+
   ↳ [`MinMax`](./Class-MinMax)
 
   ↳ [`NotEmpty`](./Class-NotEmpty)

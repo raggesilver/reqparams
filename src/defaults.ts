@@ -1,5 +1,1 @@
-import { defaults } from './internal/error-defaults';
-
-export { defaults };
-
-export default defaults;
+export { defaults, defaults as default } from './internal/error-defaults';
