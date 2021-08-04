@@ -45,6 +45,11 @@ export default class ParamBuilder implements Param {
     return this;
   }
 
+  setName(name: string) {
+    this.name = name;
+    return this;
+  }
+
   async isRequired(req: Request) {
     return typeof this.required === 'function'
       ? await this.required(req)

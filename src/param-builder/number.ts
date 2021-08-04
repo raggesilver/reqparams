@@ -38,6 +38,7 @@ export class NumberBuilder extends ParamBuilder {
           ErrorType.VALIDATION_ERROR,
           errorMessage,
           ESpecificError.GREATER_THAN_EQUAL,
+          { value: n },
         );
       }
       return true;
@@ -54,6 +55,7 @@ export class NumberBuilder extends ParamBuilder {
           ErrorType.VALIDATION_ERROR,
           errorMessage,
           ESpecificError.GREATER_THAN,
+          { value: n },
         );
       }
       return true;
@@ -70,6 +72,7 @@ export class NumberBuilder extends ParamBuilder {
           ErrorType.VALIDATION_ERROR,
           errorMessage,
           ESpecificError.LESS_THAN_EQUAL,
+          { value: n },
         );
       }
       return true;
@@ -86,6 +89,7 @@ export class NumberBuilder extends ParamBuilder {
           ErrorType.VALIDATION_ERROR,
           errorMessage,
           ESpecificError.LESS_THAN,
+          { value: n },
         );
       }
       return true;

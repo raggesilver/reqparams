@@ -6,6 +6,7 @@ export type ValidateFunction = (
   req: Request,
   param: Param,
   path: string,
+  source: keyof Request,
 ) =>
   | boolean
   | string
@@ -56,4 +57,38 @@ export interface Param {
 
 export interface Params {
   [key: string]: Param;
+}
+
+export enum ErrorType {
+  /**
+   * The param doesn't have the expected data type.
+   *
+   * **THIS IS A PROGRAMMER ERROR** on the caller side.
+   */
+  INVALID_PARAM_TYPE,
+  /**
+   * A required param was not sent in the payload.
+   */
+  MISSING_REQUIRED_PARAM,
+  /**
+   * One of the validation functions failed, which means the parameter was sent
+   * but it is invalid.
+   */
+  VALIDATION_ERROR,
+}
+
+export enum ESpecificError {
+  EITHER = 'either',
+  INTEGER = 'integer',
+  MAX = 'max',
+  MIN = 'min',
+  GREATER_THAN_EQUAL = 'geq',
+  GREATER_THAN = 'gt',
+  LESS_THAN_EQUAL = 'leq',
+  LESS_THAN = 'lt',
+  NOT_EMPTY = 'notEmpty',
+  NOT_IN_ENUM = 'notInEnum',
+  UNIQUE = 'unique',
+  // REQUIRED_IF_EXISTS = 'requiredIfExists',
+  VALID_ID = 'validId',
 }

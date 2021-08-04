@@ -4,8 +4,8 @@ import { ErrorType, ParamError } from '../error';
 import { ValidateFunction } from '../types';
 
 export default function existence(): ValidateFunction {
-  return async (_v, req, param, path) => {
-    if (_.exists(req, path)) {
+  return async (_v, req, param, path, source) => {
+    if (_.exists(req[source], path)) {
       return true;
     }
     const isParamRequired = await param.required(req);

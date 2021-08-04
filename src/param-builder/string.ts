@@ -1,9 +1,14 @@
 import { applyMixins } from '../utils';
+import { Enum } from './mixins/enum';
 import { MinMax } from './mixins/min-max';
 import { NotEmpty } from './mixins/not-empty';
 import ParamBuilder from './default';
 
-export interface StringBuilder extends ParamBuilder, MinMax, NotEmpty {}
+export interface StringBuilder
+  extends ParamBuilder,
+    MinMax,
+    NotEmpty,
+    Enum<string> {}
 
 export class StringBuilder extends ParamBuilder {
   constructor() {
@@ -21,7 +26,7 @@ export class StringBuilder extends ParamBuilder {
   }
 
   /** @deprecated use `matches` instead */
-  match = this.matches.bind(this);
+  match = this.matches;
 }
 
-applyMixins(StringBuilder, [MinMax, NotEmpty]);
+applyMixins(StringBuilder, [MinMax, NotEmpty, Enum]);

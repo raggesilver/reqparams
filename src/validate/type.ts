@@ -6,7 +6,7 @@ import _ from '@raggesilver/hidash';
 // own function in order for other components to use it.
 
 export default function (): ValidateFunction {
-  return (val: any, req, param, path) => {
+  return (val: any, req, param, path, source) => {
     // Check for null
     if (val === null && !param.nullable) {
       return false;
@@ -20,7 +20,7 @@ export default function (): ValidateFunction {
         !isNaN(Number(d)) &&
         (d.toISOString() === val || d.getTime() === val)
       ) {
-        _.set(req, path, val);
+        _.set(req[source], path, val);
         return true;
       }
     }
