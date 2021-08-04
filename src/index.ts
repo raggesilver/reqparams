@@ -44,7 +44,6 @@ export function reqparams(source: keyof Request, params: Params): Handler {
       } catch (e) {
         // Treat ParamErrors thrown during validation
         if (e instanceof ParamError) {
-          console.log('Param error', e.toString() === '1' ? e : e.toString());
           return defaults.onError(req, res, next, e.toString());
         }
         // All other errors are likely internal errors, so pass that on

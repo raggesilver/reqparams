@@ -10,7 +10,6 @@ const notrequiredMid = reqparams('body', {
 });
 const requiredIfMid = reqparams('body', {
   'name.first': ParamBuilder.String().setRequired(req => {
-    console.log('Is required?', 'name' in req.body);
     return 'name' in req.body;
   }),
 });

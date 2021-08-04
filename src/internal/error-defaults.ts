@@ -176,11 +176,16 @@ const greaterThanErrorMessage = (orEqual: boolean): ErrorMessageFunction => {
   };
 };
 
+const booleanErrorMessage: ErrorMessageFunction = (name, error) => {
+  return `${name} must be ${error.extraData!.shouldBe}.`;
+};
+
 // Defaults ====================================================================
 
 const errorMessages: {
   [k in ESpecificError]: ErrorMessageFunction;
 } = {
+  [ESpecificError.BOOLEAN]: booleanErrorMessage,
   [ESpecificError.EITHER]: () => 'FIXME: implement either',
   [ESpecificError.INTEGER]: integerErrorMessage,
   [ESpecificError.MAX]: minMaxErrorMessage,

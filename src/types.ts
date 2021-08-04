@@ -78,6 +78,7 @@ export enum ErrorType {
 }
 
 export enum ESpecificError {
+  BOOLEAN = 'boolean',
   EITHER = 'either',
   INTEGER = 'integer',
   MAX = 'max',
