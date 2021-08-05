@@ -16,12 +16,14 @@ export function reqparams(source: keyof Request, params: Params): Handler {
     // Iterate through all parameters
     paramLoop: for (const key of Object.keys(params)) {
       const param = params[key];
-      const val = _.get(req[source], key);
       const path = key;
 
       try {
         // For each param, execute all validate functions
         for (const fn of param.validate) {
+          // We get val on every iteration so we may always pass the real value
+          // if any of the previous functions happened to modify it
+          const val = _.get(req[source], key);
           const result = await fn(val, req, param, path, source);
           if (result instanceof LifecycleInstruction) {
             switch (result.type) {

@@ -23,7 +23,7 @@ export default function (): ValidateFunction {
         (d.toISOString() === val || d.getTime() === val)
       ) {
         // TODO: it would be nice if we could make this behavior optional
-        _.set(req[source], path, val);
+        _.set(req[source], path, d);
         return true;
       }
     }

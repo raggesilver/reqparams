@@ -12,7 +12,7 @@ const errorType = {
 };
 
 function dimensionComparison<T extends number | Date>(
-  n: T,
+  n: T | (() => T),
   errorMessage: string | undefined,
   type: DimensionComparisonType,
 ): ValidateFunction {
@@ -24,7 +24,8 @@ function dimensionComparison<T extends number | Date>(
       geq: (a: T, b: T) => a >= b,
     };
 
-    const fulfills = ops[type](v, n);
+    const compareWith = typeof n === 'function' ? n() : n;
+    const fulfills = ops[type](v, compareWith);
 
     if (!fulfills) {
       throw new ParamError(
@@ -33,7 +34,7 @@ function dimensionComparison<T extends number | Date>(
         ErrorType.VALIDATION_ERROR,
         errorMessage,
         errorType[type],
-        { value: n },
+        { value: compareWith },
       );
     }
 
@@ -42,22 +43,22 @@ function dimensionComparison<T extends number | Date>(
 }
 
 export class LessGreater<T extends number | Date> extends ParamBuilder {
-  lessThan(n: T, errorMessage?: string) {
+  lessThan(n: T | (() => T), errorMessage?: string) {
     this.validate.push(dimensionComparison(n, errorMessage, 'lt'));
     return this;
   }
 
-  lessThanOrEqual(n: T, errorMessage?: string) {
+  lessThanOrEqual(n: T | (() => T), errorMessage?: string) {
     this.validate.push(dimensionComparison(n, errorMessage, 'leq'));
     return this;
   }
 
-  greaterThan(n: T, errorMessage?: string) {
+  greaterThan(n: T | (() => T), errorMessage?: string) {
     this.validate.push(dimensionComparison(n, errorMessage, 'gt'));
     return this;
   }
 
-  greaterThanOrEqual(n: T, errorMessage?: string) {
+  greaterThanOrEqual(n: T | (() => T), errorMessage?: string) {
     this.validate.push(dimensionComparison(n, errorMessage, 'geq'));
     return this;
   }

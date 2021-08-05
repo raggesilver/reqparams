@@ -55,4 +55,9 @@ export default class ParamBuilder implements Param {
       ? await this.required(req)
       : this.required;
   }
+
+  // TODO: implement .clone()
+
+  // TODO: new function: .freeze() returns a ParamBuilder as a Param (without
+  // any functions)
 }
