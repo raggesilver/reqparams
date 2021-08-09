@@ -919,7 +919,8 @@ export class ParamBuilder implements Param {
 
     for (const f of fields) {
       if (_.exists(this, f)) {
-        _.set(inst, f, _.get(this, f));
+        const val = _.get(this, f);
+        _.set(inst, f, val instanceof Array ? [...val] : val);
       }
     }
 
