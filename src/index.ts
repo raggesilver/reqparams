@@ -769,6 +769,12 @@ export class ParamBuilder implements Param {
     return this;
   }
 
+  /**
+   * Ensure the given numebr or date is greater than `n`.
+   *
+   * @param n the number/date to compare with the payload value
+   * @param errorMessage an optional error message
+   */
   gt (n: number | Date, errorMessage?: string) {
     if (this.type !== Number && this.type !== Date) {
       /* istanbul ignore next */
@@ -786,6 +792,12 @@ export class ParamBuilder implements Param {
     return this;
   }
 
+  /**
+   * Ensure the given numebr or date is greater than or equal `n`.
+   *
+   * @param n the number/date to compare with the payload value
+   * @param errorMessage an optional error message
+   */
   gte (n: number | Date, errorMessage?: string) {
     if (this.type !== Number && this.type !== Date) {
       /* istanbul ignore next */
@@ -803,6 +815,12 @@ export class ParamBuilder implements Param {
     return this;
   }
 
+  /**
+   * Ensure the given numebr or date is less than `n`.
+   *
+   * @param n the number/date to compare with the payload value
+   * @param errorMessage an optional error message
+   */
   lt (n: number | Date, errorMessage?: string) {
     if (this.type !== Number && this.type !== Date) {
       /* istanbul ignore next */
@@ -820,6 +838,12 @@ export class ParamBuilder implements Param {
     return this;
   }
 
+  /**
+   * Ensure the given numebr or date is less than or equal `n`.
+   *
+   * @param n the number/date to compare with the payload value
+   * @param errorMessage an optional error message
+   */
   lte (n: number | Date, errorMessage?: string) {
     if (this.type !== Number && this.type !== Date) {
       /* istanbul ignore next */
