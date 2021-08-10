@@ -141,6 +141,22 @@ const eitherErrorMessage: ErrorMessageFunction = (_, error) => {
   return eitherText;
 };
 
+const lessGreaterMessage: ErrorMessageFunction = (name, error) => {
+  switch (error.specificError) {
+    case ESpecificError.GREATER_THAN:
+      return `${name} must be greater than ${error.extraData!.n}`;
+    case ESpecificError.GREATER_THAN_OR_EQUAL:
+      return `${name} must be greater than or equal ${error.extraData!.n}`;
+    case ESpecificError.LESS_THAN:
+      return `${name} must be less than ${error.extraData!.n}`;
+    case ESpecificError.LESS_THAN_OR_EQUAL:
+      return `${name} must be less than or equal ${error.extraData!.n}`;
+  }
+
+  /* istanbul ignore next */
+  throw new Error('Invalid specific error for less than/greater than');
+};
+
 // Defaults ====================================================================
 
 const errorMessages: {
@@ -155,6 +171,10 @@ const errorMessages: {
   notInEnum: notInEnumErrorMessage,
   requiredIfExists: requiredIfExistsErrorMessage,
   validId: validIdErrorMessage,
+  lt: lessGreaterMessage,
+  lte: lessGreaterMessage,
+  gt: lessGreaterMessage,
+  gte: lessGreaterMessage,
 };
 
 const defaults = {

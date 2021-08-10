@@ -137,6 +137,10 @@ export enum ESpecificError {
   UNIQUE = 'unique',
   REQUIRED_IF_EXISTS = 'requiredIfExists',
   VALID_ID = 'validId',
+  LESS_THAN = 'lt',
+  LESS_THAN_OR_EQUAL = 'lte',
+  GREATER_THAN = 'gt',
+  GREATER_THAN_OR_EQUAL = 'gte',
 }
 
 type SpecificError = ESpecificError|string;
@@ -762,6 +766,74 @@ export class ParamBuilder implements Param {
         '.max() can only be used with strings, arrays, numbers and dates'
       );
     }
+    return this;
+  }
+
+  gt (n: number | Date, errorMessage?: string) {
+    if (this.type !== Number && this.type !== Date) {
+      /* istanbul ignore next */
+      throw new Error('.gt() can only be used with numbers and dates');
+    }
+    this.validate.push((v: number | Date) => {
+      if (!(v > n)) {
+        if (errorMessage) {
+          return errorMessage;
+        }
+        throw new ValidationError(ESpecificError.GREATER_THAN, { n });
+      }
+      return true;
+    });
+    return this;
+  }
+
+  gte (n: number | Date, errorMessage?: string) {
+    if (this.type !== Number && this.type !== Date) {
+      /* istanbul ignore next */
+      throw new Error('.gte() can only be used with numbers and dates');
+    }
+    this.validate.push((v: number | Date) => {
+      if (!(v >= n)) {
+        if (errorMessage) {
+          return errorMessage;
+        }
+        throw new ValidationError(ESpecificError.GREATER_THAN_OR_EQUAL, { n });
+      }
+      return true;
+    });
+    return this;
+  }
+
+  lt (n: number | Date, errorMessage?: string) {
+    if (this.type !== Number && this.type !== Date) {
+      /* istanbul ignore next */
+      throw new Error('.lt() can only be used with numbers and dates');
+    }
+    this.validate.push((v: number | Date) => {
+      if (!(v < n)) {
+        if (errorMessage) {
+          return errorMessage;
+        }
+        throw new ValidationError(ESpecificError.LESS_THAN, { n });
+      }
+      return true;
+    });
+    return this;
+  }
+
+  lte (n: number | Date, errorMessage?: string) {
+    if (this.type !== Number && this.type !== Date) {
+      /* istanbul ignore next */
+      throw new Error('.lte() can only be used with numbers and dates');
+    }
+    this.validate.push((v: number | Date) => {
+      if (!(v <= n)) {
+        if (errorMessage) {
+          return errorMessage;
+        }
+        throw new ValidationError(ESpecificError.LESS_THAN_OR_EQUAL, { n });
+      }
+      return true;
+    });
     return this;
   }
 
